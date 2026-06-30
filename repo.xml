@@ -4,7 +4,7 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.1.0" target="*" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.1.0" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
       <changes lang="EN">Initial public release.</changes>
