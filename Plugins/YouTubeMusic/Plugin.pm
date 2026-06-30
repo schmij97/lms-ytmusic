@@ -15,6 +15,7 @@ use Slim::Player::ProtocolHandlers;
 
 use Plugins::YouTubeMusic::API;
 use Plugins::YouTubeMusic::PlaylistProtocolHandler;
+use Plugins::YouTubeMusic::ProtocolHandler;
 
 my $prefs = preferences('plugin.youtubemusic');
 my $log   = Slim::Utils::Log->addLogCategory({
@@ -274,6 +275,7 @@ sub _items_to_menu {
 
         if ($type eq 'song' && $item->{videoId}) {
             my $ytm_url = "ytm://$item->{videoId}";
+            Plugins::YouTubeMusic::ProtocolHandler->primeMetadata($item->{videoId}, $item);
             push @menu, {
                 name      => $item->{title}  || 'Unknown',
                 line2     => _song_line2($item),
@@ -326,6 +328,7 @@ sub _items_to_menu {
         }
         elsif ($item->{videoId}) {
             my $ytm_url = "ytm://$item->{videoId}";
+            Plugins::YouTubeMusic::ProtocolHandler->primeMetadata($item->{videoId}, $item);
             push @menu, {
                 name      => $item->{title}    || 'Unknown',
                 line2     => $item->{subtitle} || '',

@@ -146,6 +146,22 @@ sub _prefetch_next_track {
 # worth it) and instead let getMetadataFor read straight from here.
 my %_metadata_cache;
 
+# Called synchronously by Plugin.pm/PlaylistProtocolHandler.pm with data we
+# already have on hand from search/browse results, so the cache is warm
+# before LMS ever needs it - avoids a placeholder-text flash while the
+# normal async getSongInfo fetch would otherwise still be in flight.
+sub primeMetadata {
+    my ($class, $video_id, $info) = @_;
+    return unless $video_id && $info;
+
+    $_metadata_cache{$video_id} ||= {
+        title    => $info->{title}     || '',
+        artist   => $info->{artist}    || '',
+        duration => $info->{duration}  || 0,
+        cover    => $info->{thumbnail} || '',
+    };
+}
+
 sub _fetch_metadata {
     my ($video_id, $song) = @_;
 

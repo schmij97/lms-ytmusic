@@ -13,6 +13,7 @@ use warnings;
 
 use Slim::Utils::Log;
 use Plugins::YouTubeMusic::API;
+use Plugins::YouTubeMusic::ProtocolHandler;
 
 my $log = Slim::Utils::Log->addLogCategory({
     category     => 'plugin.youtubemusic',
@@ -40,9 +41,12 @@ sub explodePlaylist {
             return;
         }
 
-        my @urls = map {
-            $_->{videoId} ? "ytm://$_->{videoId}" : ()
-        } @{ $data->{items} };
+        my @urls;
+        for my $track (@{ $data->{items} }) {
+            next unless $track->{videoId};
+            Plugins::YouTubeMusic::ProtocolHandler->primeMetadata($track->{videoId}, $track);
+            push @urls, "ytm://$track->{videoId}";
+        }
 
         $log->info("Exploded playlist $browse_id into " . scalar(@urls) . " tracks");
         $callback->(\@urls);
