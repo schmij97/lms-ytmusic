@@ -1,0 +1,353 @@
+package Plugins::YouTubeMusic::Plugin;
+
+use strict;
+use warnings;
+use base qw(Slim::Plugin::OPMLBased);
+
+use POSIX          qw(SIGTERM);
+use File::Spec     ();
+use Scalar::Util   qw(blessed);
+
+use Slim::Utils::Log;
+use Slim::Utils::Prefs;
+use Slim::Utils::Strings qw(cstring string);
+use Slim::Player::ProtocolHandlers;
+
+use Plugins::YouTubeMusic::API;
+use Plugins::YouTubeMusic::PlaylistProtocolHandler;
+
+my $prefs = preferences('plugin.youtubemusic');
+my $log   = Slim::Utils::Log->addLogCategory({
+    category     => 'plugin.youtubemusic',
+    defaultLevel => 'INFO',
+    description  => 'PLUGIN_YOUTUBEMUSIC',
+});
+
+my $PROXY_PID;
+
+sub initPlugin {
+    my $class = shift;
+
+    $prefs->init({
+        proxy_port => 9876,
+    });
+
+    $class->_start_proxy();
+
+    Slim::Player::ProtocolHandlers->registerHandler(
+        'ytm', 'Plugins::YouTubeMusic::ProtocolHandler'
+    );
+    Slim::Player::ProtocolHandlers->registerHandler(
+        'ytmplaylist', 'Plugins::YouTubeMusic::PlaylistProtocolHandler'
+    );
+
+    $class->SUPER::initPlugin(
+        feed   => \&_top_level,
+        tag    => 'youtubemusic',
+        menu   => 'radios',
+        is_app => 1,
+        weight => 10,
+    );
+
+    if (main::WEBUI) {
+        require Plugins::YouTubeMusic::Settings;
+        Plugins::YouTubeMusic::Settings->new($class);
+    }
+
+    $log->info("YouTube Music plugin initialised");
+}
+
+sub shutdownPlugin {
+    my $class = shift;
+    if ($PROXY_PID) {
+        $log->info("Stopping YouTube Music proxy (PID $PROXY_PID)");
+        eval { kill SIGTERM, $PROXY_PID };
+        waitpid($PROXY_PID, 0);
+        $PROXY_PID = undef;
+    }
+}
+
+sub getDisplayName { 'PLUGIN_YOUTUBEMUSIC' }
+sub playerMenu     { undef }
+
+sub _start_proxy {
+    my $class  = shift;
+    my $port   = $prefs->get('proxy_port') || 9876;
+    my $script = File::Spec->catfile($class->_pluginDataFor('basedir'), 'ytmproxy.py');
+
+    unless (-f $script) {
+        $log->error("Proxy script not found at $script");
+        return;
+    }
+
+    my $python = _find_python();
+    unless ($python) {
+        $log->error("python3 not found in PATH");
+        return;
+    }
+
+    $log->info("Starting YouTube Music proxy: $python $script --port $port");
+
+    my $pid = fork();
+    if (!defined $pid) {
+        $log->error("fork() failed: $!");
+        return;
+    }
+
+    if ($pid == 0) {
+        exec($python, $script, '--port', $port, '--log-level', 'WARNING') or do {
+            $log->error("exec failed: $!");
+            exit 1;
+        };
+    }
+
+    $PROXY_PID = $pid;
+    $log->info("Proxy started (PID $pid)");
+}
+
+sub _find_python {
+    for my $py (qw(python3 python)) {
+        my $path = `which $py 2>/dev/null`; chomp $path;
+        return $path if $path && -x $path;
+    }
+    return undef;
+}
+
+sub _top_level {
+    my ($client, $callback, $args) = @_;
+
+    my @items = (
+        {
+            name       => cstring($client, 'PLUGIN_YOUTUBEMUSIC_SEARCH'),
+            url        => \&_search_dispatch,
+            searchable => 1,
+        },
+        {
+            name  => cstring($client, 'PLUGIN_YOUTUBEMUSIC_HOME'),
+            url   => \&_home_menu,
+        },
+        {
+            name  => cstring($client, 'PLUGIN_YOUTUBEMUSIC_CHARTS'),
+            url   => \&_charts_menu,
+        },
+    );
+
+    $callback->({ items => \@items });
+}
+
+sub _search_dispatch {
+    my ($client, $callback, $args) = @_;
+
+    my $query = $args->{search} // '';
+
+    unless ($query) {
+        $callback->({ items => [] });
+        return;
+    }
+
+    my @type_menus = map {
+        my ($key, $label) = @$_;
+        {
+            name        => cstring($client, $label),
+            url         => \&_search_results,
+            passthrough => [{ query => $query, type => $key }],
+        }
+    } (
+        [ songs     => 'PLUGIN_YOUTUBEMUSIC_SONGS'     ],
+        [ albums    => 'PLUGIN_YOUTUBEMUSIC_ALBUMS'    ],
+        [ artists   => 'PLUGIN_YOUTUBEMUSIC_ARTISTS'   ],
+        [ playlists => 'PLUGIN_YOUTUBEMUSIC_PLAYLISTS' ],
+    );
+
+    $callback->({ items => \@type_menus });
+}
+
+sub _search_results {
+    my ($client, $callback, $args, $params) = @_;
+
+    Plugins::YouTubeMusic::API->search(
+        $params->{query},
+        $params->{type},
+        sub {
+            my $results = shift;
+            unless ($results && ref $results eq 'ARRAY') {
+                return $callback->({ items => [], error => 'Search failed' });
+            }
+            $callback->({ items => _items_to_menu($client, $results) });
+        }
+    );
+}
+
+sub _home_menu {
+    my ($client, $callback) = @_;
+
+    Plugins::YouTubeMusic::API->browseHome(sub {
+        my $sections = shift;
+        unless ($sections && ref $sections eq 'ARRAY') {
+            return $callback->({ items => [] });
+        }
+
+        my @items = map {
+            my $section = $_;
+            {
+                name => $section->{title} || cstring($client, 'PLUGIN_YOUTUBEMUSIC_HOME'),
+                url  => sub {
+                    my ($c, $cb) = @_;
+                    $cb->({ items => _items_to_menu($c, $section->{items} // []) });
+                },
+            }
+        } @$sections;
+
+        $callback->({ items => \@items });
+    });
+}
+
+sub _charts_menu {
+    my ($client, $callback) = @_;
+
+    Plugins::YouTubeMusic::API->browseCharts(sub {
+        my $sections = shift;
+        unless ($sections && ref $sections eq 'ARRAY') {
+            return $callback->({ items => [] });
+        }
+
+        my @items = map {
+            my $section = $_;
+            {
+                name => $section->{title} || cstring($client, 'PLUGIN_YOUTUBEMUSIC_CHARTS'),
+                url  => sub {
+                    my ($c, $cb) = @_;
+                    $cb->({ items => _items_to_menu($c, $section->{items} // []) });
+                },
+            }
+        } @$sections;
+
+        $callback->({ items => \@items });
+    });
+}
+
+sub _artist_menu {
+    my ($client, $callback, $args, $params) = @_;
+
+    Plugins::YouTubeMusic::API->browseArtist($params->{browseId}, sub {
+        my $data = shift;
+        unless ($data && ref $data eq 'HASH') {
+            return $callback->({ items => [] });
+        }
+
+        my @items = map {
+            my $section = $_;
+            {
+                name => $section->{title} || 'Tracks',
+                url  => sub {
+                    my ($c, $cb) = @_;
+                    $cb->({ items => _items_to_menu($c, $section->{items} // []) });
+                },
+            }
+        } @{ $data->{sections} // [] };
+
+        $callback->({ items => \@items });
+    });
+}
+
+sub _playlist_menu {
+    my ($client, $callback, $args, $params) = @_;
+    my $type = $params->{browse_type} // 'playlist';
+
+    my $api_method = ($type eq 'album') ? 'browseAlbum' : 'browsePlaylist';
+
+    Plugins::YouTubeMusic::API->$api_method($params->{browseId}, sub {
+        my $data = shift;
+        unless ($data && ref $data eq 'HASH') {
+            return $callback->({ items => [] });
+        }
+        $callback->({ items => _items_to_menu($client, $data->{items} // []) });
+    });
+}
+
+sub _items_to_menu {
+    my ($client, $items) = @_;
+    my @menu;
+
+    for my $item (@{ $items // [] }) {
+        my $type = $item->{type} // '';
+
+        if ($type eq 'song' && $item->{videoId}) {
+            my $ytm_url = "ytm://$item->{videoId}";
+            push @menu, {
+                name      => $item->{title}  || 'Unknown',
+                line2     => _song_line2($item),
+                url       => $ytm_url,
+                image     => $item->{thumbnail} || '',
+                play      => $ytm_url,
+                type      => 'audio',
+                on_select => 'play',
+            };
+        }
+        elsif ($type eq 'album' && $item->{browseId}) {
+            push @menu, {
+                name        => $item->{title}  || 'Unknown Album',
+                line2       => join(' • ', grep { $_ } $item->{artist}, $item->{year}),
+                image       => $item->{thumbnail} || '',
+                url         => \&_playlist_menu,
+                play        => "ytmplaylist://$item->{browseId}",
+                passthrough => [{ browseId => $item->{browseId}, browse_type => 'album' }],
+            };
+        }
+        elsif ($type eq 'artist' && $item->{browseId}) {
+            push @menu, {
+                name        => $item->{name}   || 'Unknown Artist',
+                image       => $item->{thumbnail} || '',
+                url         => \&_artist_menu,
+                passthrough => [{ browseId => $item->{browseId} }],
+            };
+        }
+        elsif ($type eq 'playlist' && $item->{browseId}) {
+            push @menu, {
+                name        => $item->{title}  || 'Unknown Playlist',
+                line2       => $item->{count}  || '',
+                image       => $item->{thumbnail} || '',
+                url         => \&_playlist_menu,
+                play        => "ytmplaylist://$item->{browseId}",
+                passthrough => [{ browseId => $item->{browseId}, browse_type => 'playlist' }],
+            };
+        }
+        elsif ($item->{browseId}) {
+            my $btype = $item->{type} // 'playlist';
+            my %entry = (
+                name        => $item->{title}    || $item->{name} || 'Unknown',
+                line2       => $item->{subtitle} || '',
+                image       => $item->{thumbnail} || '',
+                url         => ($btype eq 'artist') ? \&_artist_menu : \&_playlist_menu,
+                passthrough => [{ browseId => $item->{browseId}, browse_type => $btype }],
+            );
+            $entry{play} = "ytmplaylist://$item->{browseId}" unless $btype eq 'artist';
+            push @menu, \%entry;
+        }
+        elsif ($item->{videoId}) {
+            my $ytm_url = "ytm://$item->{videoId}";
+            push @menu, {
+                name      => $item->{title}    || 'Unknown',
+                line2     => $item->{subtitle} || '',
+                url       => $ytm_url,
+                image     => $item->{thumbnail} || '',
+                play      => $ytm_url,
+                type      => 'audio',
+                on_select => 'play',
+            };
+        }
+    }
+
+    return \@menu;
+}
+
+sub _song_line2 {
+    my $item = shift;
+    return join(' • ', grep { $_ }
+        $item->{artist}   || '',
+        $item->{album}    || '',
+        $item->{duration} || '',
+    );
+}
+
+1;

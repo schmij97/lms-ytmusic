@@ -1,0 +1,48 @@
+[% pagetitle = 'PLUGIN_YOUTUBEMUSIC_SETTINGS' %]
+[% lefttoright = 1 %]
+[% PROCESS helpinfo.html %]
+
+<h4>[% 'PLUGIN_YOUTUBEMUSIC_SETTINGS' | string %]</h4>
+
+<div class="helptext">[% 'PLUGIN_YOUTUBEMUSIC_DESC' | string %]</div>
+
+<form id="ytmusicForm" action="[% webroot %]plugins/YouTubeMusic/settings/basic.html"
+      method="post" onsubmit="return validateYTMSettings();">
+
+  <input type="hidden" name="saveSettings" value="1" />
+  <input type="hidden" name="page"         value="[% page %]" />
+
+  <table class="sectionTable">
+    <tr>
+      <td class="sectionItemName">
+        [% 'PLUGIN_YOUTUBEMUSIC_PROXY_PORT' | string %]
+      </td>
+      <td class="sectionItemValue">
+        <input type="number" name="proxy_port"
+               id="ytm_proxy_port"
+               value="[% prefs.proxy_port || 9876 %]"
+               min="1024" max="65535"
+               style="width:6em;" />
+      </td>
+      <td class="sectionItemHelp">
+        [% 'PLUGIN_YOUTUBEMUSIC_PROXY_PORT_DESC' | string %]
+      </td>
+    </tr>
+  </table>
+
+  <div class="saveButton">
+    <input type="submit" value="[% 'SAVE' | string %]" />
+  </div>
+
+</form>
+
+<script>
+function validateYTMSettings() {
+    var port = parseInt(document.getElementById('ytm_proxy_port').value, 10);
+    if (isNaN(port) || port < 1024 || port > 65535) {
+        alert('Port must be between 1024 and 65535');
+        return false;
+    }
+    return true;
+}
+</script>

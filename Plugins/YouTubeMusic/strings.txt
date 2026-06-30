@@ -1,0 +1,56 @@
+PLUGIN_YOUTUBEMUSIC
+	EN	YouTube Music
+
+PLUGIN_YOUTUBEMUSIC_DESC
+	EN	Browse and stream YouTube Music through Lyrion Music Server
+
+PLUGIN_YOUTUBEMUSIC_HOME
+	EN	Home
+
+PLUGIN_YOUTUBEMUSIC_SEARCH
+	EN	Search
+
+PLUGIN_YOUTUBEMUSIC_CHARTS
+	EN	Charts & Trending
+
+PLUGIN_YOUTUBEMUSIC_SONGS
+	EN	Songs
+
+PLUGIN_YOUTUBEMUSIC_ALBUMS
+	EN	Albums
+
+PLUGIN_YOUTUBEMUSIC_ARTISTS
+	EN	Artists
+
+PLUGIN_YOUTUBEMUSIC_PLAYLISTS
+	EN	Playlists
+
+PLUGIN_YOUTUBEMUSIC_VIDEOS
+	EN	Videos
+
+PLUGIN_YOUTUBEMUSIC_SETTINGS
+	EN	YouTube Music Settings
+
+PLUGIN_YOUTUBEMUSIC_PROXY_PORT
+	EN	Proxy Port
+
+PLUGIN_YOUTUBEMUSIC_PROXY_PORT_DESC
+	EN	Local TCP port for the YouTube Music API proxy process (default: 9876). Change only if another service uses port 9876.
+
+PLUGIN_YOUTUBEMUSIC_PROXY_STATUS
+	EN	Proxy Status
+
+PLUGIN_YOUTUBEMUSIC_PROXY_RUNNING
+	EN	Running
+
+PLUGIN_YOUTUBEMUSIC_PROXY_STOPPED
+	EN	Stopped
+
+PLUGIN_YOUTUBEMUSIC_ERROR_NO_YTDLP
+	EN	yt-dlp not found. Install it with: sudo pip3 install yt-dlp
+
+PLUGIN_YOUTUBEMUSIC_ERROR_NO_PYTHON
+	EN	python3 not found. Install it with: sudo apt install python3
+
+PLUGIN_YOUTUBEMUSIC_ERROR_PROXY_FAILED
+	EN	Could not connect to YouTube Music proxy. Check LMS logs.
