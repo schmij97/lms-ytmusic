@@ -3,6 +3,19 @@
 Browse, search, and stream YouTube Music to your Squeezebox players through
 Lyrion Music Server (formerly Logitech Media Server).
 
+## Disclaimer
+
+This is an independent, unofficial project. It is not affiliated with,
+endorsed by, or sponsored by Google LLC or YouTube. "YouTube" and
+"YouTube Music" are trademarks of Google LLC, referenced here only to
+describe the service this tool interacts with.
+
+This plugin works by calling YouTube Music's internal (InnerTube) web API,
+which is undocumented and not intended for third-party use. It may stop
+working at any time if Google changes that API, and its continued
+functionality is not guaranteed. Use it at your own risk, and in
+accordance with YouTube's Terms of Service.
+
 > This plugin uses YouTube Music's unofficial InnerTube API. It may stop
 > working if Google changes that API without notice. See
 > [If the API changes](#if-the-api-changes) below for how to fix it.
