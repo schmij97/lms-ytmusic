@@ -30,7 +30,8 @@ sub initPlugin {
     my $class = shift;
 
     $prefs->init({
-        proxy_port => 9876,
+        proxy_port    => 9876,
+        my_playlists  => [],
     });
 
     $class->_start_proxy();
@@ -131,6 +132,10 @@ sub _top_level {
             name  => cstring($client, 'PLUGIN_YOUTUBEMUSIC_CHARTS'),
             url   => \&_charts_menu,
         },
+        {
+            name  => cstring($client, 'PLUGIN_YOUTUBEMUSIC_MY_PLAYLISTS'),
+            url   => \&_my_playlists_menu,
+        },
     );
 
     $callback->({ items => \@items });
@@ -225,6 +230,35 @@ sub _charts_menu {
 
         $callback->({ items => \@items });
     });
+}
+
+sub _my_playlists_menu {
+    my ($client, $callback) = @_;
+
+    my $saved = $prefs->get('my_playlists') || [];
+    $saved = [$saved] unless ref $saved eq 'ARRAY';
+
+    my @items;
+
+    # Saved playlist entries
+    for my $entry (@$saved) {
+        my ($name, $browse_id) = split /\|/, $entry, 2;
+        next unless $name && $browse_id;
+        push @items, {
+            name        => $name,
+            url         => \&_playlist_menu,
+            play        => "ytmplaylist://$browse_id",
+            passthrough => [{ browseId => $browse_id, browse_type => 'playlist' }],
+        };
+    }
+
+    # Always show an "Add Current Playlist" hint and management options
+    push @items, {
+        name => '+ Save a playlist (see Settings)',
+        type => 'text',
+    };
+
+    $callback->({ items => \@items });
 }
 
 sub _artist_menu {
