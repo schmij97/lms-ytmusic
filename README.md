@@ -146,16 +146,21 @@ comparing it to the current parsing logic is the way to find what
 changed.
 
 ## Architecture
-LMS (Perl)
-├── Plugin.pm               menus, lifecycle, proxy management
-├── API.pm                  async HTTP calls to local proxy
-├── ProtocolHandler.pm      ytm:// scheme, streaming, metadata
-├── PlaylistProtocolHandler.pm   ytmplaylist:// scheme (play whole playlist/album)
-└── Settings.pm             web settings page
-ytmproxy.py (Python, local sidecar process on 127.0.0.1:9876)
-├── InnerTube API calls (search, browse, song info)
-├── /stream/<videoId>       yt-dlp | ffmpeg → clean MP3 stream
-└── /prefetch/<videoId>     background-resolve the next track early
+
+| Component | Role |
+|-----------|------|
+| `Plugin.pm` | Menus, lifecycle, proxy management |
+| `API.pm` | Async HTTP calls to local proxy |
+| `ProtocolHandler.pm` | `ytm://` scheme, streaming, metadata |
+| `PlaylistProtocolHandler.pm` | `ytmplaylist://` scheme — play whole playlist/album |
+| `Settings.pm` | Web settings page |
+| `ytmproxy.py` | Python sidecar on `127.0.0.1:9876` — InnerTube API, streaming, prefetch |
+
+**Request flow:**
+```
+Device → LMS → ytmproxy.py → yt-dlp | ffmpeg → MP3 → Device
+                    ↘ /prefetch/<id>  (background, next track)
+```
 
 ## License
 
