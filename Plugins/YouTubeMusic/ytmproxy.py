@@ -456,11 +456,18 @@ def start_prefetch(video_id):
 
 
 def get_prefetched_path(video_id):
-    """Return the path to a fully-cached file for video_id, or None."""
+    """Return the path to a fully-cached file for video_id, or None.
+    Returns None if the file is missing or empty (failed prefetch)."""
     _, done_path = _prefetch_paths(video_id)
-    return done_path if os.path.exists(done_path) else None
-
-
+    if os.path.exists(done_path) and os.path.getsize(done_path) > 0:
+        return done_path
+    # Clean up zero-byte files so they don't block future prefetch attempts
+    if os.path.exists(done_path):
+        try:
+            os.remove(done_path)
+        except OSError:
+            pass
+    return None
 def _find_ytdlp():
     for name in ("yt-dlp", "yt_dlp", "youtube-dl"):
         path = shutil.which(name)
