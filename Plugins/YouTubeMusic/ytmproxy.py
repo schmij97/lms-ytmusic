@@ -314,6 +314,159 @@ def browse_charts():
     _cache_set("charts", result)
     return result
 
+def _parse_two_row_items(carousel):
+    """Parse musicTwoRowItemRenderer entries from a carousel or grid."""
+    items = []
+    for entry in carousel.get("contents", []):
+        r = entry.get("musicTwoRowItemRenderer", {})
+        if not r:
+            continue
+        nav       = r.get("navigationEndpoint", {})
+        browse_ep = nav.get("browseEndpoint", {})
+        watch_ep  = nav.get("watchEndpoint", {})
+        thumb     = _thumbnail(
+            r.get("thumbnailRenderer", {})
+             .get("musicThumbnailRenderer", {})
+             .get("thumbnail", {})
+             .get("thumbnails", [])
+        )
+        item = {
+            "title":     _text(r),
+            "subtitle":  _text(r, "subtitle"),
+            "thumbnail": thumb,
+        }
+        if browse_ep.get("browseId"):
+            pt = (
+                browse_ep.get("browseEndpointContextSupportedConfigs", {})
+                         .get("browseEndpointContextMusicConfig", {})
+                         .get("pageType", "")
+            )
+            item["browseId"] = browse_ep["browseId"]
+            item["pageType"] = pt
+            item["type"] = (
+                "album"  if "ALBUM"  in pt else
+                "artist" if "ARTIST" in pt else
+                "playlist"
+            )
+        elif watch_ep.get("videoId"):
+            item["videoId"] = watch_ep["videoId"]
+            item["url"]     = f"ytm://{watch_ep['videoId']}"
+            item["type"]    = "song"
+        items.append(item)
+    return items
+
+
+def _parse_nav_button_items(grid):
+    """Parse musicNavigationButtonRenderer entries (used by Moods and Genres)."""
+    items = []
+    for entry in grid.get("items", []):
+        r = entry.get("musicNavigationButtonRenderer", {})
+        if not r:
+            continue
+        title     = _text(r, "buttonText")
+        cmd       = r.get("clickCommand", {})
+        browse_ep = cmd.get("browseEndpoint", {})
+        browse_id = browse_ep.get("browseId", "")
+        params    = browse_ep.get("params", "")
+        if title and browse_id:
+            items.append({
+                "title":    title,
+                "browseId": browse_id,
+                "params":   params,
+                "type":     "mood_category",
+            })
+    return items
+
+
+def browse_new_releases():
+    cached = _cache_get("new_releases")
+    if cached is not None:
+        return cached
+    data     = _post("browse", {"browseId": "FEmusic_new_releases"})
+    sections = _single_col_sections(data)
+    result   = []
+    for section in sections:
+        carousel = section.get("musicCarouselShelfRenderer", {})
+        grid     = section.get("gridRenderer", {})
+        if carousel:
+            header = carousel.get("header", {}).get("musicCarouselShelfBasicHeaderRenderer", {})
+            title  = _text(header.get("title", {}))
+            items  = _parse_two_row_items(carousel)
+        elif grid:
+            items  = _parse_two_row_items({"contents": grid.get("items", [])})
+            title  = ""
+        else:
+            continue
+        if items:
+            result.append({"title": title or "New Releases", "items": items})
+    _cache_set("new_releases", result)
+    return result
+
+
+def browse_moods():
+    cached = _cache_get("moods")
+    if cached is not None:
+        return cached
+    data     = _post("browse", {"browseId": "FEmusic_moods_and_genres"})
+    sections = _single_col_sections(data)
+    result   = []
+    for section in sections:
+        grid = section.get("gridRenderer", {})
+        if not grid:
+            continue
+        items = _parse_nav_button_items(grid)
+        if items:
+            result.append({"title": "Moods and Genres", "items": items})
+    _cache_set("moods", result)
+    return result
+
+
+def browse_mood_category(browse_id, params):
+    cache_key = f"mood:{browse_id}:{params}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+    data     = _post("browse", {"browseId": browse_id, "params": params})
+    sections = _single_col_sections(data)
+    result   = []
+    for section in sections:
+        carousel = section.get("musicCarouselShelfRenderer", {})
+        grid     = section.get("gridRenderer", {})
+        if carousel:
+            header = carousel.get("header", {}).get("musicCarouselShelfBasicHeaderRenderer", {})
+            title  = _text(header.get("title", {}))
+            items  = _parse_two_row_items(carousel)
+        elif grid:
+            items  = _parse_two_row_items({"contents": grid.get("items", [])})
+            title  = ""
+        else:
+            continue
+        if items:
+            result.append({"title": title or "Playlists", "items": items})
+    _cache_set(cache_key, result)
+    return result
+
+
+def browse_podcasts():
+    cached = _cache_get("podcasts")
+    if cached is not None:
+        return cached
+    data     = _post("browse", {"browseId": "FEmusic_podcasts"})
+    sections = _single_col_sections(data)
+    result   = []
+    for section in sections:
+        carousel = section.get("musicCarouselShelfRenderer", {})
+        if not carousel:
+            continue
+        header = carousel.get("header", {}).get("musicCarouselShelfBasicHeaderRenderer", {})
+        title  = _text(header.get("title", {}))
+        items  = _parse_two_row_items(carousel)
+        if items:
+            result.append({"title": title or "Podcasts", "items": items})
+    _cache_set("podcasts", result)
+    return result
+
+
 def browse_playlist(browse_id):
     cache_key = f"playlist:{browse_id}"
     cached = _cache_get(cache_key)
@@ -588,6 +741,18 @@ class _Handler(BaseHTTPRequestHandler):
                 self._send_json(browse_home())
             elif path == "/browse/charts":
                 self._send_json(browse_charts())
+            elif path == "/browse/new_releases":
+                self._send_json(browse_new_releases())
+            elif path == "/browse/moods":
+                self._send_json(browse_moods())
+            elif path == "/browse/mood_category":
+                bid    = p("browseId")
+                params = p("params", "")
+                if not bid:
+                    return self._error("Missing browseId", 400)
+                self._send_json(browse_mood_category(bid, params))
+            elif path == "/browse/podcasts":
+                self._send_json(browse_podcasts())
             elif path == "/playlist":
                 bid = p("browseId")
                 if not bid:

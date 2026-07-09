@@ -91,4 +91,21 @@ sub prefetch {
     _get("/prefetch/$video_id", $cb);
 }
 
+sub browseNewReleases {
+    my ($class, $cb) = @_;
+    _get("/browse/new_releases", $cb);
+}
+sub browseMoods {
+    my ($class, $cb) = @_;
+    _get("/browse/moods", $cb);
+}
+sub browseMoodCategory {
+    my ($class, $browse_id, $params, $cb) = @_;
+    _get("/browse/mood_category?browseId=$browse_id&params=" . uri_escape_utf8($params), $cb);
+}
+sub browsePodcasts {
+    my ($class, $cb) = @_;
+    _get("/browse/podcasts", $cb);
+}
+
 1;

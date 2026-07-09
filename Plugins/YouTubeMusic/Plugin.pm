@@ -136,6 +136,18 @@ sub _top_level {
             name  => cstring($client, 'PLUGIN_YOUTUBEMUSIC_MY_PLAYLISTS'),
             url   => \&_my_playlists_menu,
         },
+        {
+            name  => cstring($client, 'PLUGIN_YOUTUBEMUSIC_NEW_RELEASES'),
+            url   => \&_new_releases_menu,
+        },
+        {
+            name  => cstring($client, 'PLUGIN_YOUTUBEMUSIC_MOODS'),
+            url   => \&_moods_menu,
+        },
+        {
+            name  => cstring($client, 'PLUGIN_YOUTUBEMUSIC_PODCASTS'),
+            url   => \&_podcasts_menu,
+        },
     );
 
     $callback->({ items => \@items });
@@ -259,6 +271,81 @@ sub _my_playlists_menu {
     };
 
     $callback->({ items => \@items });
+}
+
+sub _new_releases_menu {
+    my ($client, $callback) = @_;
+    Plugins::YouTubeMusic::API->browseNewReleases(sub {
+        my $sections = shift;
+        unless ($sections && ref $sections eq 'ARRAY') {
+            return $callback->({ items => [] });
+        }
+        my @items = map {
+            my $section = $_;
+            {
+                name => $section->{title} || cstring($client, 'PLUGIN_YOUTUBEMUSIC_NEW_RELEASES'),
+                url  => sub {
+                    my ($c, $cb) = @_;
+                    $cb->({ items => _items_to_menu($c, $section->{items} // []) });
+                },
+            }
+        } @$sections;
+        $callback->({ items => \@items });
+    });
+}
+
+sub _moods_menu {
+    my ($client, $callback) = @_;
+    Plugins::YouTubeMusic::API->browseMoods(sub {
+        my $sections = shift;
+        unless ($sections && ref $sections eq 'ARRAY') {
+            return $callback->({ items => [] });
+        }
+        my @items;
+        for my $section (@$sections) {
+            for my $item (@{ $section->{items} // [] }) {
+                next unless $item->{browseId};
+                my $bid    = $item->{browseId};
+                my $params = $item->{params} // '';
+                push @items, {
+                    name => $item->{title} || 'Unknown',
+                    url  => sub {
+                        my ($c, $cb) = @_;
+                        Plugins::YouTubeMusic::API->browseMoodCategory($bid, $params, sub {
+                            my $cat_sections = shift;
+                            my @cat_items;
+                            for my $cat_section (@{ $cat_sections // [] }) {
+                                push @cat_items, @{ _items_to_menu($c, $cat_section->{items} // []) };
+                            }
+                            $cb->({ items => \@cat_items });
+                        });
+                    },
+                };
+            }
+        }
+        $callback->({ items => \@items });
+    });
+}
+
+sub _podcasts_menu {
+    my ($client, $callback) = @_;
+    Plugins::YouTubeMusic::API->browsePodcasts(sub {
+        my $sections = shift;
+        unless ($sections && ref $sections eq 'ARRAY') {
+            return $callback->({ items => [] });
+        }
+        my @items = map {
+            my $section = $_;
+            {
+                name => $section->{title} || cstring($client, 'PLUGIN_YOUTUBEMUSIC_PODCASTS'),
+                url  => sub {
+                    my ($c, $cb) = @_;
+                    $cb->({ items => _items_to_menu($c, $section->{items} // []) });
+                },
+            }
+        } @$sections;
+        $callback->({ items => \@items });
+    });
 }
 
 sub _artist_menu {
