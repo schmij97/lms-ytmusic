@@ -42,12 +42,7 @@ sub initPlugin {
     Slim::Player::ProtocolHandlers->registerHandler(
         'ytmplaylist', 'Plugins::YouTubeMusic::PlaylistProtocolHandler'
     );
-    # Compatibility shim: handle youtube:// URLs from philippe44's LMS-YouTube
-    # plugin so existing Favorites and integrations (e.g. 1001 Albums) continue
-    # to work if a user switches from that plugin to this one.
-    Slim::Player::ProtocolHandlers->registerHandler(
-        'youtube', 'Plugins::YouTubeMusic::ProtocolHandler'
-    );
+
 
     $class->SUPER::initPlugin(
         feed   => \&_top_level,
@@ -119,6 +114,23 @@ sub _find_python {
         return $path if $path && -x $path;
     }
     return undef;
+}
+
+sub postinitPlugin {
+    my $class = shift;
+    # Register youtube:// scheme only if nothing else has claimed it yet.
+    # This runs after all plugins have initialised, so we can safely check
+    # whether philippe44's LMS-YouTube (or another plugin) is already
+    # handling it. If it is, we leave it alone; if not, we take it over
+    # so existing Favorites and integrations keep working.
+    if (!Slim::Player::ProtocolHandlers->handlerForURL('youtube://x')) {
+        $log->info("Registering youtube:// compatibility shim");
+        Slim::Player::ProtocolHandlers->registerHandler(
+            'youtube', 'Plugins::YouTubeMusic::ProtocolHandler'
+        );
+    } else {
+        $log->info("youtube:// already handled by another plugin, skipping shim");
+    }
 }
 
 sub _top_level {
