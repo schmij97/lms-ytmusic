@@ -22,12 +22,20 @@ accordance with YouTube's Terms of Service.
 
 ## Features
 
-- Browse Home, Charts & Trending, Search (Songs/Albums/Artists/Playlists)
+- Browse Home, Charts & Trending, New Releases, Moods & Genres, Podcasts
+- Search (Songs, Albums, Artists, Playlists)
+- My Playlists — save favourite playlists so they always appear in the menu
 - Play individual songs or explode a full playlist/album into your queue
 - Background prefetching of the next track so transitions are near-instant
 - Works on real Squeezebox hardware (tested on Squeezebox Radio) and
   software players (squeezeslave)
 - Correct title, artist, and artwork metadata
+- Compatible with philippe44's LMS-YouTube plugin — existing `youtube://` 
+  Favorites continue to work if switching from that plugin to this one
+
+> **Note:** When searching for podcasts, individual episodes appear under
+> the **Songs** category. This is expected — they play correctly as audio
+> tracks. To browse full podcast shows, use the **Podcasts** menu section.
 
 ## Requirements
 
