@@ -297,11 +297,18 @@ def browse_charts():
     sections = _single_col_sections(data)
     result   = []
     for section in sections:
-        shelf = section.get("musicShelfRenderer", {})
-        if not shelf:
+        # Charts page uses both plain shelves and carousel shelves
+        shelf    = section.get("musicShelfRenderer", {})
+        carousel = section.get("musicCarouselShelfRenderer", {})
+        target   = shelf or carousel
+        if not target:
             continue
-        title = _text(shelf.get("title", {}))
-        items = _shelf_items(shelf)
+        if carousel:
+            header = carousel.get("header", {}).get("musicCarouselShelfBasicHeaderRenderer", {})
+            title  = _text(header.get("title", {}))
+        else:
+            title = _text(shelf.get("title", {}))
+        items = _shelf_items(target)
         if items:
             result.append({"title": title or "Charts", "items": items})
     _cache_set("charts", result)
