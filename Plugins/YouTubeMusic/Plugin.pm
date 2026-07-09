@@ -126,9 +126,10 @@ sub _top_level {
 
     my @items = (
         {
-            name       => cstring($client, 'PLUGIN_YOUTUBEMUSIC_SEARCH'),
-            url        => \&_search_dispatch,
-            searchable => 1,
+            name   => cstring($client, 'PLUGIN_YOUTUBEMUSIC_SEARCH'),
+            url    => \&_search_dispatch,
+            type   => 'search',
+            search => '',
         },
         {
             name  => cstring($client, 'PLUGIN_YOUTUBEMUSIC_HOME'),
