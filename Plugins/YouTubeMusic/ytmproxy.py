@@ -161,15 +161,17 @@ def _parse_playlist(r):
 def _classify_and_parse(r):
     pt        = _page_type(r)
     has_video = bool(_video_id_from_overlay(r))
-    if has_video or pt == "MUSIC_PAGE_TYPE_TRACK":
-        return _parse_song(r)
+    # Check browse-based types first (before video check)
     if pt == "MUSIC_PAGE_TYPE_ALBUM":
         return _parse_album(r)
     if pt == "MUSIC_PAGE_TYPE_ARTIST":
         return _parse_artist(r)
     if "PLAYLIST" in pt:
         return _parse_playlist(r)
-    if has_video:
+    if "PODCAST" in pt:
+        return _parse_playlist(r)
+    # Fall back to song/video
+    if has_video or pt == "MUSIC_PAGE_TYPE_TRACK":
         return _parse_song(r)
     return None
 

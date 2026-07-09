@@ -4,13 +4,13 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.2.0" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.2.1" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Added New Releases, Moods and Genres, and Podcasts browse sections.</changes>
+      <changes lang="EN">Fixed search returning no results for podcasts. Podcast shows now appear correctly in search results.</changes>
       <creator>schmij97</creator>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.2.0/YouTubeMusic-1.2.0.zip</url>
-      <sha>655b4274db0a12f0e43929f9637c92410e05ac66</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.2.1/YouTubeMusic-1.2.1.zip</url>
+      <sha>da501a5717d3f9da36636f4cd235b41dd61bbfd0</sha>
     </plugin>
   </plugins>
 </extensions>
