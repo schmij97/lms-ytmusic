@@ -79,14 +79,31 @@ sub new {
 
 # ── Main resolution ───────────────────────────────────────────────────────────
 
+# Extract a YouTube video ID from any of the URL shapes we handle:
+#   ytm://VIDEO_ID                         (our native scheme)
+#   youtube://VIDEO_ID                     (philippe44 compat)
+#   youtube://www.youtube.com/v/VIDEO_ID   (philippe44 compat)
+#   https://www.youtube.com/watch?v=ID     (plain YouTube URL)
+#   https://youtu.be/VIDEO_ID             (short URL)
+sub _extract_video_id {
+    my ($url) = @_;
+    my ($vid);
+    ($vid) = $url =~ m{^ytm://([A-Za-z0-9_\-]+)}                    and return $vid;
+    ($vid) = $url =~ m{^youtube://([A-Za-z0-9_\-]+)$}               and return $vid;
+    ($vid) = $url =~ m{youtube://(?:www\.)?youtube\.com/v/([A-Za-z0-9_\-]+)} and return $vid;
+    ($vid) = $url =~ m{[?&]v=([A-Za-z0-9_\-]+)}                     and return $vid;
+    ($vid) = $url =~ m{youtu\.be/([A-Za-z0-9_\-]+)}                and return $vid;
+    return undef;
+}
+
 sub getNextTrack {
     my ($class, $song, $successCb, $errorCb) = @_;
 
     my $url   = $song->currentTrack()->url;
-    my ($vid) = $url =~ m{^ytm://([A-Za-z0-9_\-]+)};
+    my $vid = _extract_video_id($url);
 
     unless ($vid) {
-        $log->error("Malformed ytm:// URL: $url");
+        $log->error("Unrecognised URL: $url");
         $errorCb->('Invalid YouTube Music URL');
         return;
     }

@@ -42,6 +42,12 @@ sub initPlugin {
     Slim::Player::ProtocolHandlers->registerHandler(
         'ytmplaylist', 'Plugins::YouTubeMusic::PlaylistProtocolHandler'
     );
+    # Compatibility shim: handle youtube:// URLs from philippe44's LMS-YouTube
+    # plugin so existing Favorites and integrations (e.g. 1001 Albums) continue
+    # to work if a user switches from that plugin to this one.
+    Slim::Player::ProtocolHandlers->registerHandler(
+        'youtube', 'Plugins::YouTubeMusic::ProtocolHandler'
+    );
 
     $class->SUPER::initPlugin(
         feed   => \&_top_level,
