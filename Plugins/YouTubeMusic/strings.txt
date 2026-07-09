@@ -5,7 +5,7 @@ PLUGIN_YOUTUBEMUSIC_DESC
 	EN	Browse and stream YouTube Music through Lyrion Music Server
 
 PLUGIN_YOUTUBEMUSIC_HOME
-	EN	Home
+	EN	Featured
 
 PLUGIN_YOUTUBEMUSIC_SEARCH
 	EN	Search

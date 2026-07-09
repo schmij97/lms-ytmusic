@@ -4,13 +4,13 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.2.3" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.2.4" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Fixed Search not showing a text input in the LMS web UI.</changes>
+      <changes lang="EN">Renamed "Home" to "Featured" in the main menu.</changes>
       <creator>schmij97</creator>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.2.3/YouTubeMusic-1.2.3.zip</url>
-      <sha>358210b854dcb5847e2b46171f3d0b39094f89be</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.2.4/YouTubeMusic-1.2.4.zip</url>
+      <sha>9c493f84ffe15b26f3cff717cf2201a3f6b46c68</sha>
     </plugin>
   </plugins>
 </extensions>
