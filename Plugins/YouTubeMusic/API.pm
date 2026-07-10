@@ -108,4 +108,9 @@ sub browsePodcasts {
     _get("/browse/podcasts", $cb);
 }
 
+sub browseRadio {
+    my ($class, $video_id, $cb) = @_;
+    _get("/radio?videoId=$video_id", $cb);
+}
+
 1;

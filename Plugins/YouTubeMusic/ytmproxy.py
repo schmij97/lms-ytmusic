@@ -469,6 +469,59 @@ def browse_podcasts():
     return result
 
 
+def browse_radio(video_id):
+    """Return a list of song items for a YouTube Music radio seeded by video_id."""
+    cache_key = f"radio:{video_id}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    data = _post("next", {
+        "videoId":    video_id,
+        "playlistId": f"RDAMVM{video_id}",
+        "isAudioOnly": True,
+        "watchEndpointMusicSupportedConfigs": {
+            "watchEndpointMusicConfig": {
+                "musicVideoType": "MUSIC_VIDEO_TYPE_ATV"
+            }
+        }
+    })
+
+    items = (
+        data.get("contents", {})
+            .get("singleColumnMusicWatchNextResultsRenderer", {})
+            .get("tabbedRenderer", {})
+            .get("watchNextTabbedResultsRenderer", {})
+            .get("tabs", [])[0]
+            .get("tabRenderer", {})
+            .get("content", {})
+            .get("musicQueueRenderer", {})
+            .get("content", {})
+            .get("playlistPanelRenderer", {})
+            .get("contents", [])
+    )
+
+    result = []
+    for item in items:
+        r = item.get("playlistPanelVideoRenderer", {})
+        vid = r.get("videoId", "")
+        if not vid:
+            continue
+        thumb = _thumbnail(
+            r.get("thumbnail", {}).get("thumbnails", [])
+        )
+        result.append({
+            "type":      "song",
+            "videoId":   vid,
+            "title":     _text(r.get("title", {})) or f"YouTube Music - {vid}",
+            "artist":    _text(r.get("longBylineText", {})),
+            "thumbnail": thumb,
+        })
+
+    _cache_set(cache_key, result)
+    return result
+
+
 def browse_playlist(browse_id):
     cache_key = f"playlist:{browse_id}"
     cached = _cache_get(cache_key)
@@ -796,6 +849,11 @@ class _Handler(BaseHTTPRequestHandler):
                         self._send_json({"status": "error", "message": result.stderr.strip()})
                 except Exception as e:
                     self._send_json({"status": "error", "message": str(e)})
+            elif path == "/radio":
+                vid = p("videoId")
+                if not vid:
+                    return self._error("Missing videoId", 400)
+                self._send_json(browse_radio(vid))
             elif path == "/browse/new_releases":
                 self._send_json(browse_new_releases())
             elif path == "/browse/moods":

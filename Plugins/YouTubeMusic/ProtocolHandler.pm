@@ -155,7 +155,17 @@ sub _prefetch_next_track {
 
     my $next_index = $current_index + 1;
     my $count      = eval { Slim::Player::Playlist::count($client) } || 0;
-    if ($next_index >= $count) { $log->debug("Prefetch: next_index($next_index) >= count($count)"); return; }
+    if ($next_index >= $count) {
+        # Queue is empty — auto-continue with radio based on current track
+        $log->debug("Prefetch: queue empty, starting radio from current track");
+        my $cur_track = eval { Slim::Player::Playlist::track($client, $current_index) };
+        if ($cur_track) {
+            my $cur_url = eval { $cur_track->url } // '';
+            my ($cur_vid) = $cur_url =~ m{^ytm://([A-Za-z0-9_\-]+)};
+            _start_radio($client, $cur_vid) if $cur_vid;
+        }
+        return;
+    }
 
     my $next_track = eval { Slim::Player::Playlist::track($client, $next_index) };
     unless ($next_track) { $log->debug("Prefetch: no next_track at index $next_index, err=$@"); return; }
@@ -199,6 +209,34 @@ sub primeMetadata {
         duration => $info->{duration}  || 0,
         cover    => $info->{thumbnail} || '',
     };
+}
+
+sub _start_radio {
+    my ($client, $video_id) = @_;
+    return unless $client && $video_id;
+
+    $log->info("Starting radio from videoId: $video_id");
+
+    Plugins::YouTubeMusic::API->browseRadio($video_id, sub {
+        my $data = shift;
+        unless ($data && ref $data eq 'ARRAY' && @$data) {
+            $log->warn("Radio returned no tracks for $video_id");
+            return;
+        }
+
+        # Skip the first track if it's the same as current
+        my @tracks = grep { $_->{videoId} && $_->{videoId} ne $video_id } @$data;
+        unless (@tracks) {
+            $log->warn("Radio returned no new tracks for $video_id");
+            return;
+        }
+
+        my @urls = map { "ytm://$_->{videoId}" } @tracks;
+        $log->info("Adding " . scalar(@urls) . " radio tracks to queue");
+
+        # Add tracks to the end of the current playlist
+        $client->execute(['playlist', 'addtracks', 'listRef', \@urls]);
+    });
 }
 
 sub _fetch_metadata {
