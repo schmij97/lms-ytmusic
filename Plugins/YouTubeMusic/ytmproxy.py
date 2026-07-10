@@ -148,6 +148,39 @@ def _parse_artist(r):
         "thumbnail": _thumb_from_renderer(r),
     }
 
+def _parse_podcast_episode(r):
+    """Parse a musicMultiRowListItemRenderer (podcast episode)."""
+    nav      = r.get("onTap", {}).get("watchEndpoint", {})
+    video_id = nav.get("videoId", "")
+    if not video_id:
+        return None
+    title    = _text(r.get("title",    {}), "runs[0].text") or _text_runs(r.get("title",    {}))
+    subtitle = _text_runs(r.get("subtitle", {}))
+    thumb    = _thumbnail(
+        r.get("thumbnail", {})
+         .get("musicThumbnailRenderer", {})
+         .get("thumbnail", {})
+         .get("thumbnails", [])
+    )
+    return {
+        "type":      "song",
+        "videoId":   video_id,
+        "title":     title or f"Episode",
+        "artist":    subtitle,
+        "thumbnail": thumb,
+    }
+
+
+def _text_runs(obj):
+    """Extract text from a runs array directly."""
+    if not obj:
+        return ""
+    runs = obj.get("runs", [])
+    if runs:
+        return "".join(r.get("text", "") for r in runs)
+    return obj.get("simpleText", "")
+
+
 def _parse_playlist(r):
     browse_ep = r.get("navigationEndpoint", {}).get("browseEndpoint", {})
     return {
@@ -590,14 +623,27 @@ def browse_playlist(browse_id):
             for key in ("musicShelfRenderer", "musicPlaylistShelfRenderer", "musicCarouselShelfRenderer"):
                 target = section.get(key, {})
                 if target:
-                    items.extend(_shelf_items(target))
+                    # Check for podcast episodes (musicMultiRowListItemRenderer)
+                    for entry in target.get("contents", []):
+                        if "musicMultiRowListItemRenderer" in entry:
+                            ep = _parse_podcast_episode(entry["musicMultiRowListItemRenderer"])
+                            if ep:
+                                items.append(ep)
+                        else:
+                            items.extend(_shelf_items({"contents": [entry]}))
     else:
         sections = _single_col_sections(data)
         for section in sections:
             for key in ("musicShelfRenderer", "musicCarouselShelfRenderer", "musicPlaylistShelfRenderer"):
                 target = section.get(key, {})
                 if target:
-                    items.extend(_shelf_items(target))
+                    for entry in target.get("contents", []):
+                        if "musicMultiRowListItemRenderer" in entry:
+                            ep = _parse_podcast_episode(entry["musicMultiRowListItemRenderer"])
+                            if ep:
+                                items.append(ep)
+                        else:
+                            items.extend(_shelf_items({"contents": [entry]}))
 
     result = {"browseId": browse_id, "items": items}
     _cache_set(cache_key, result)
