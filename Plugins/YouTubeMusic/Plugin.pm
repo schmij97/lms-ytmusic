@@ -1,6 +1,7 @@
 package Plugins::YouTubeMusic::Plugin;
 
 use strict;
+use Time::HiRes;
 use warnings;
 use base qw(Slim::Plugin::OPMLBased);
 
@@ -38,6 +39,12 @@ sub initPlugin {
 
     Slim::Player::ProtocolHandlers->registerHandler(
         'ytm', 'Plugins::YouTubeMusic::ProtocolHandler'
+    );
+    # Query proxy for available audio codec (handles piCorePlayer where
+    # ffmpeg lacks libmp3lame and must fall back to aac)
+    Slim::Utils::Timers::setTimer(
+        undef, Time::HiRes::time() + 5,
+        sub { Plugins::YouTubeMusic::ProtocolHandler::_init_audio_format() }
     );
     Slim::Player::ProtocolHandlers->registerHandler(
         'ytmplaylist', 'Plugins::YouTubeMusic::PlaylistProtocolHandler'

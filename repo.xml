@@ -4,13 +4,13 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.2.5" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.0" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Improved youtube:// compatibility shim — now registers in postinitPlugin and only takes over the scheme if no other plugin has already claimed it.</changes>
+      <changes lang="EN">Added ffmpeg codec auto-detection (fixes audio on piCorePlayer where libmp3lame is unavailable). Added yt-dlp update button in Settings.</changes>
       <creator>schmij97</creator>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.2.5/YouTubeMusic-1.2.5.zip</url>
-      <sha>aab7a63e5b888c07c1053aabfbf19d4799831b47</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.0/YouTubeMusic-1.3.0.zip</url>
+      <sha>bd18becfb5c9c022d1d4e500e0a643762a47d66e</sha>
     </plugin>
   </plugins>
 </extensions>

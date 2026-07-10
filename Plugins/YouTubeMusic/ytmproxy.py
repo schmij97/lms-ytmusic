@@ -558,14 +558,43 @@ def get_song_info(video_id):
 # resolved MP3 to a temp file; if /stream/<id> is requested before this
 # finishes, it falls back to live (uncached) resolution as before.
 
+# ---- Audio codec detection ----
+# Probe ffmpeg at startup to find the best available audio encoder.
+# piCorePlayer's ffmpeg lacks libmp3lame so we fall back to aac.
+def _detect_audio_codec():
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-encoders", "-v", "quiet"],
+            capture_output=True, text=True, timeout=10
+        )
+        output = result.stdout + result.stderr
+        if "libmp3lame" in output:
+            logging.info("ffmpeg codec: libmp3lame (MP3)")
+            return "libmp3lame", "mp3", "audio/mpeg"
+        elif "aac" in output:
+            logging.info("ffmpeg codec: aac (AAC fallback)")
+            return "aac", "adts", "audio/aac"
+        elif "flac" in output:
+            logging.info("ffmpeg codec: flac (FLAC fallback)")
+            return "flac", "flac", "audio/flac"
+        else:
+            logging.warning("No suitable ffmpeg codec found, defaulting to mp3")
+            return "libmp3lame", "mp3", "audio/mpeg"
+    except Exception as e:
+        logging.warning("ffmpeg codec detection failed: %s", e)
+        return "libmp3lame", "mp3", "audio/mpeg"
+
+_AUDIO_CODEC, _AUDIO_FORMAT, _AUDIO_MIME = _detect_audio_codec()
+
 PREFETCH_DIR = "/tmp/ytmproxy_prefetch"
 _prefetch_started = set()
 _prefetch_lock = threading.Lock()
 
 def _prefetch_paths(video_id):
     os.makedirs(PREFETCH_DIR, exist_ok=True)
-    tmp_path  = os.path.join(PREFETCH_DIR, f"{video_id}.mp3.part")
-    done_path = os.path.join(PREFETCH_DIR, f"{video_id}.mp3")
+    ext = _AUDIO_FORMAT if _AUDIO_FORMAT != "adts" else "aac"
+    tmp_path  = os.path.join(PREFETCH_DIR, f"{video_id}.{ext}.part")
+    done_path = os.path.join(PREFETCH_DIR, f"{video_id}.{ext}")
     return tmp_path, done_path
 
 
@@ -670,8 +699,8 @@ def stream_audio(video_id):
         "-map_metadata", "-1",
         "-id3v2_version", "0",
         "-write_id3v1", "0",
-        "-f", "mp3",
-        "-codec:a", "libmp3lame",
+        "-f", _AUDIO_FORMAT,
+        "-codec:a", _AUDIO_CODEC,
         "-b:a", "192k",
         "pipe:1",
     ]
@@ -743,6 +772,30 @@ class _Handler(BaseHTTPRequestHandler):
                 self._send_json(browse_home())
             elif path == "/browse/charts":
                 self._send_json(browse_charts())
+            elif path == "/codec":
+                self._send_json({
+                    "codec":  _AUDIO_CODEC,
+                    "format": _AUDIO_FORMAT,
+                    "mime":   _AUDIO_MIME,
+                })
+            elif path == "/update_ytdlp":
+                try:
+                    result = subprocess.run(
+                        [sys.executable, "-m", "pip", "install", "yt-dlp",
+                         "--upgrade", "--break-system-packages", "-q"],
+                        capture_output=True, text=True, timeout=120
+                    )
+                    if result.returncode == 0:
+                        # get new version
+                        ver = subprocess.run(
+                            [_find_ytdlp(), "--version"],
+                            capture_output=True, text=True, timeout=10
+                        )
+                        self._send_json({"status": "ok", "version": ver.stdout.strip()})
+                    else:
+                        self._send_json({"status": "error", "message": result.stderr.strip()})
+                except Exception as e:
+                    self._send_json({"status": "error", "message": str(e)})
             elif path == "/browse/new_releases":
                 self._send_json(browse_new_releases())
             elif path == "/browse/moods":
@@ -786,7 +839,7 @@ class _Handler(BaseHTTPRequestHandler):
                     try:
                         size = os.path.getsize(cached_path)
                         self.send_response(200)
-                        self.send_header("Content-Type", "audio/mpeg")
+                        self.send_header("Content-Type", _AUDIO_MIME)
                         self.send_header("Content-Length", str(size))
                         self.send_header("Cache-Control", "no-cache")
                         self.end_headers()
@@ -805,7 +858,7 @@ class _Handler(BaseHTTPRequestHandler):
                         logging.exception("Cached stream error for %s, falling back to live", vid)
 
                 self.send_response(200)
-                self.send_header("Content-Type", "audio/mpeg")
+                self.send_header("Content-Type", _AUDIO_MIME)
                 self.send_header("Transfer-Encoding", "chunked")
                 self.send_header("Cache-Control", "no-cache")
                 self.end_headers()

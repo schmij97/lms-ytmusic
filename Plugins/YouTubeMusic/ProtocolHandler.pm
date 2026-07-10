@@ -42,9 +42,31 @@ sub canSeek         { 0 }
 sub canDirectStream { 0 }
 sub songBytes       {}
 
-sub formatOverride  { 'mp3' }
-sub getFormatForURL { 'mp3' }
-sub contentType     { 'mp3' }
+# Audio format — determined at startup by querying the proxy's /codec
+# endpoint, which probes ffmpeg for available encoders. Defaults to mp3
+# but falls back to aac on platforms like piCorePlayer where libmp3lame
+# is not available.
+my $_audio_format = 'mp3';
+
+sub _init_audio_format {
+    my $port = preferences('plugin.youtubemusic')->get('proxy_port') || 9876;
+    Slim::Networking::SimpleAsyncHTTP->new(
+        sub {
+            my $http = shift;
+            my $data = eval { JSON::XS::decode_json($http->content) };
+            if ($data && $data->{format}) {
+                my $fmt = $data->{format} eq 'adts' ? 'aac' : $data->{format};
+                $_audio_format = $fmt;
+                $log->info("Audio format set to: $fmt");
+            }
+        },
+        sub { $log->warn("Could not query codec from proxy, defaulting to mp3") },
+    )->get("http://127.0.0.1:$port/codec");
+}
+
+sub formatOverride  { $_audio_format }
+sub getFormatForURL { $_audio_format }
+sub contentType     { $_audio_format }
 
 # Substitute the local proxy stream URL before the base class opens the
 # socket, same pattern used by RadioParadise's protocol handler.

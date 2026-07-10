@@ -1,6 +1,33 @@
 [% pagetitle = 'PLUGIN_YOUTUBEMUSIC_SETTINGS' %]
 [% PROCESS settings/header.html %]
 
+  [% WRAPPER setting title="yt-dlp" desc="Update yt-dlp to the latest version. yt-dlp is used to resolve YouTube stream URLs and must be kept up to date as YouTube changes its systems." %]
+    <button type="button" id="ytdlpUpdateBtn" onclick="updateYtDlp()">Update yt-dlp</button>
+    <span id="ytdlpStatus" style="margin-left:10px;"></span>
+    <script>
+    function updateYtDlp() {
+        var btn = document.getElementById('ytdlpUpdateBtn');
+        var status = document.getElementById('ytdlpStatus');
+        btn.disabled = true;
+        status.textContent = 'Updating...';
+        fetch('http://' + window.location.hostname + ':9876/update_ytdlp')
+            .then(r => r.json())
+            .then(d => {
+                if (d.status === 'ok') {
+                    status.textContent = 'Updated to ' + d.version;
+                } else {
+                    status.textContent = 'Error: ' + d.message;
+                }
+                btn.disabled = false;
+            })
+            .catch(e => {
+                status.textContent = 'Error: ' + e;
+                btn.disabled = false;
+            });
+    }
+    </script>
+  [% END %]
+
   [% WRAPPER setting title="PLUGIN_YOUTUBEMUSIC_PROXY_PORT" desc="PLUGIN_YOUTUBEMUSIC_PROXY_PORT_DESC" %]
     <input type="number" name="pref_proxy_port"
            id="ytm_proxy_port"
