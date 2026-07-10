@@ -51,6 +51,13 @@ On Raspberry Pi OS / Debian:
 sudo apt install -y python3 python3-pip ffmpeg libio-socket-ssl-perl libnet-ssleay-perl
 sudo pip3 install yt-dlp --break-system-packages
 ```
+### piCorePlayer notes
+
+- Install `pcp-ffmpeg.tcz` from the pCP extension manager — **not** `ffmpeg.tcz` (the standard one lacks MP3 support and won't work)
+- The plugin will automatically detect available codecs and fall back to AAC if MP3 is unavailable
+- yt-dlp should be installed via pip: `pip3 install yt-dlp`
+
+> **Tip:** Once installed, you can update yt-dlp at any time from **Settings → Advanced → YouTube Music → Update yt-dlp** without needing command line access.
 
 ## Installation (recommended)
 
