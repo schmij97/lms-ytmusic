@@ -4,13 +4,13 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.2" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.3" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Fixed playlist search returning empty results. Search now correctly handles all YouTube Music result types (playlists, albums, artists, songs).</changes>
+      <changes lang="EN">Fixed piCorePlayer audio cutting out after 3 seconds — FLAC is now used as the fallback codec instead of AAC (FLAC is universally supported by Squeezebox hardware). Fixed yt-dlp updater to use yt-dlp -U first (works without pip on piCorePlayer), falling back to pip on standard installs.</changes>
       <creator>schmij97</creator>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.2/YouTubeMusic-1.3.2.zip</url>
-      <sha>fbbf4e7f0b3fe84aede2fddf9d85a4eba9467bab</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.3/YouTubeMusic-1.3.3.zip</url>
+      <sha>483b9bdc668b1526d24ddc95451e34196a3dec0a</sha>
     </plugin>
   </plugins>
 </extensions>

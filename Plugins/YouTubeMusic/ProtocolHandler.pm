@@ -55,7 +55,10 @@ sub _init_audio_format {
             my $http = shift;
             my $data = eval { JSON::XS::decode_json($http->content) };
             if ($data && $data->{format}) {
-                my $fmt = $data->{format} eq 'adts' ? 'aac' : $data->{format};
+                my $fmt = $data->{format};
+                # Normalise format strings to what LMS expects
+                $fmt = 'aac' if $fmt eq 'adts';
+                $fmt = 'flc' if $fmt eq 'flac';
                 $_audio_format = $fmt;
                 $log->info("Audio format set to: $fmt");
             }

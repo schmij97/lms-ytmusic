@@ -671,12 +671,15 @@ def _detect_audio_codec():
         if "libmp3lame" in output:
             logging.info("ffmpeg codec: libmp3lame (MP3)")
             return "libmp3lame", "mp3", "audio/mpeg"
+        elif "flac" in output:
+            # FLAC is universally supported by Squeezebox hardware and
+            # is a better fallback than AAC (which hardware decoders
+            # often can't handle). piCorePlayer's ffmpeg has flac.
+            logging.info("ffmpeg codec: flac (FLAC fallback - hardware compatible)")
+            return "flac", "flac", "audio/flac"
         elif "aac" in output:
             logging.info("ffmpeg codec: aac (AAC fallback)")
             return "aac", "adts", "audio/aac"
-        elif "flac" in output:
-            logging.info("ffmpeg codec: flac (FLAC fallback)")
-            return "flac", "flac", "audio/flac"
         else:
             logging.warning("No suitable ffmpeg codec found, defaulting to mp3")
             return "libmp3lame", "mp3", "audio/mpeg"
@@ -880,20 +883,32 @@ class _Handler(BaseHTTPRequestHandler):
                 })
             elif path == "/update_ytdlp":
                 try:
-                    result = subprocess.run(
-                        [sys.executable, "-m", "pip", "install", "yt-dlp",
-                         "--upgrade", "--break-system-packages", "-q"],
-                        capture_output=True, text=True, timeout=120
-                    )
-                    if result.returncode == 0:
-                        # get new version
-                        ver = subprocess.run(
-                            [_find_ytdlp(), "--version"],
-                            capture_output=True, text=True, timeout=10
-                        )
-                        self._send_json({"status": "ok", "version": ver.stdout.strip()})
+                    ytdlp = _find_ytdlp()
+                    if not ytdlp:
+                        self._send_json({"status": "error", "message": "yt-dlp not found"})
                     else:
-                        self._send_json({"status": "error", "message": result.stderr.strip()})
+                        # Try yt-dlp -U first (works on piCorePlayer and other
+                        # systems without pip). Fall back to pip if -U fails
+                        # (e.g. when installed via pip on Debian/Ubuntu).
+                        result = subprocess.run(
+                            [ytdlp, "-U"],
+                            capture_output=True, text=True, timeout=120
+                        )
+                        if result.returncode != 0:
+                            # Fall back to pip upgrade
+                            result = subprocess.run(
+                                [sys.executable, "-m", "pip", "install", "yt-dlp",
+                                 "--upgrade", "--break-system-packages", "-q"],
+                                capture_output=True, text=True, timeout=120
+                            )
+                        if result.returncode == 0:
+                            ver = subprocess.run(
+                                [ytdlp, "--version"],
+                                capture_output=True, text=True, timeout=10
+                            )
+                            self._send_json({"status": "ok", "version": ver.stdout.strip()})
+                        else:
+                            self._send_json({"status": "error", "message": result.stderr.strip() or result.stdout.strip()})
                 except Exception as e:
                     self._send_json({"status": "error", "message": str(e)})
             elif path == "/radio":
