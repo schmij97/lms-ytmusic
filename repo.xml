@@ -4,13 +4,13 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.4" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.5" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Fixed podcast show pages showing blank — episodes now load correctly when browsing into a podcast from the Podcasts section.</changes>
+      <changes lang="EN">Improved yt-dlp format selection to prefer m4a/mp3 over opus/webm for better ffmpeg compatibility. Removed bitrate flag for lossless codecs (FLAC).</changes>
       <creator>schmij97</creator>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.4/YouTubeMusic-1.3.4.zip</url>
-      <sha>0ce05e2fc918f8c3ab4b949d4f57a01777dda8fa</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.5/YouTubeMusic-1.3.5.zip</url>
+      <sha>f489caf32097488dbde6ee522cf21fb74af4c754</sha>
     </plugin>
   </plugins>
 </extensions>

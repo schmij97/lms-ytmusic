@@ -834,7 +834,7 @@ def stream_audio(video_id):
         "--no-playlist",
         "--quiet",
         "--no-warnings",
-        "-f", "bestaudio",
+        "-f", "bestaudio[ext=m4a]/bestaudio[ext=mp3]/bestaudio",
         "--add-header", "User-Agent:com.google.android.youtube/17.29.34",
         "-o", "-",
         url,
@@ -850,9 +850,10 @@ def stream_audio(video_id):
         "-write_id3v1", "0",
         "-f", _AUDIO_FORMAT,
         "-codec:a", _AUDIO_CODEC,
-        "-b:a", "192k",
-        "pipe:1",
     ]
+    if _AUDIO_CODEC not in ("flac", "pcm_s16le"):
+        ffmpeg_cmd += ["-b:a", "192k"]
+    ffmpeg_cmd.append("pipe:1")
 
     logging.info("Streaming videoId=%s", video_id)
 
