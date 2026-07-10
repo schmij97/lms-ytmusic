@@ -229,9 +229,56 @@ def search(query, type_filter="songs"):
         )
     results = []
     for section in tabs:
+        # Standard song/artist/album shelf
         shelf = section.get("musicShelfRenderer", {})
         if shelf:
             results.extend(_shelf_items(shelf))
+            continue
+
+        # Playlist/album top result card
+        card = section.get("musicCardShelfRenderer", {})
+        if card:
+            nav = card.get("onTap", {})
+            browse_ep = nav.get("browseEndpoint", {})
+            watch_ep  = nav.get("watchEndpoint", {})
+            thumb = _thumbnail(
+                card.get("thumbnail", {})
+                    .get("musicThumbnailRenderer", {})
+                    .get("thumbnail", {})
+                    .get("thumbnails", [])
+            )
+            title = _text(card.get("title", {})) or _text(card.get("subtitle", {}))
+            if browse_ep.get("browseId"):
+                pt = (
+                    browse_ep.get("browseEndpointContextSupportedConfigs", {})
+                             .get("browseEndpointContextMusicConfig", {})
+                             .get("pageType", "")
+                )
+                results.append({
+                    "type":      "album" if "ALBUM" in pt else "artist" if "ARTIST" in pt else "playlist",
+                    "title":     title,
+                    "browseId":  browse_ep["browseId"],
+                    "thumbnail": thumb,
+                })
+            elif watch_ep.get("videoId"):
+                results.append({
+                    "type":      "song",
+                    "videoId":   watch_ep["videoId"],
+                    "title":     title,
+                    "thumbnail": thumb,
+                })
+            continue
+
+        # itemSectionRenderer — individual playlist/artist results
+        item_section = section.get("itemSectionRenderer", {})
+        if item_section:
+            for entry in item_section.get("contents", []):
+                r = entry.get("musicResponsiveListItemRenderer")
+                if r:
+                    item = _classify_and_parse(r)
+                    if item:
+                        results.append(item)
+
     _cache_set(cache_key, results)
     return results
 
