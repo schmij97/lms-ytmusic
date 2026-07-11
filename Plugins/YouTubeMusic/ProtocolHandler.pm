@@ -134,7 +134,11 @@ sub getNextTrack {
     }
 
     my $port       = $prefs->get('proxy_port') || 9876;
-    my $streamUrl  = "http://127.0.0.1:$port/stream/$vid";
+    # Use the real LMS server address rather than 127.0.0.1 so that
+    # players on separate machines can fetch the stream directly when
+    # LMS decides to use direct streaming instead of proxying.
+    my $server_ip  = Slim::Utils::Network::serverAddr() || '127.0.0.1';
+    my $streamUrl  = "http://$server_ip:$port/stream/$vid";
 
     $log->info("Routing playback through local proxy: $streamUrl");
 
