@@ -1063,8 +1063,8 @@ def run(port=9876, log_level="INFO"):
         format="%(asctime)s [%(levelname)s] %(message)s",
         stream=sys.stderr,
     )
-    server = ThreadingHTTPServer(("127.0.0.1", port), _Handler)
-    logging.info("YTMusic proxy listening on 127.0.0.1:%d", port)
+    server = ThreadingHTTPServer(("0.0.0.0", port), _Handler)
+    logging.info("YTMusic proxy listening on 0.0.0.0:%d", port)
     server.serve_forever()
 
 if __name__ == "__main__":

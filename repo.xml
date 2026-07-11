@@ -4,13 +4,13 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.6" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.7" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Fixed direct streaming to players on separate machines — stream URL now uses the real LMS server IP instead of 127.0.0.1, so hardware players like Transporter can fetch streams directly when LMS chooses direct streaming mode.</changes>
+      <changes lang="EN">Fixed proxy not accepting connections when LMS uses the real server IP — proxy now listens on all interfaces (0.0.0.0) instead of loopback only.</changes>
       <creator>schmij97</creator>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.6/YouTubeMusic-1.3.6.zip</url>
-      <sha>075b7b5d4cf618584acfa4623decf0a4d002beff</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.7/YouTubeMusic-1.3.7.zip</url>
+      <sha>418bc3fed74ce267e407e931efb895d6691228ac</sha>
     </plugin>
   </plugins>
 </extensions>
