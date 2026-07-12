@@ -47,6 +47,7 @@ sub songBytes       {}
 # but falls back to aac on platforms like piCorePlayer where libmp3lame
 # is not available.
 my $_audio_format = 'mp3';
+my %_radio_active;  # tracks which clients have radio running
 
 sub _init_audio_format {
     my $port = preferences('plugin.youtubemusic')->get('proxy_port') || 9876;
@@ -207,7 +208,6 @@ sub _prefetch_next_track {
 # string, and fighting that plumbing for remote/ephemeral tracks isn't
 # worth it) and instead let getMetadataFor read straight from here.
 my %_metadata_cache;
-my %_radio_active;  # tracks which clients have radio running
 
 # Called synchronously by Plugin.pm/PlaylistProtocolHandler.pm with data we
 # already have on hand from search/browse results, so the cache is warm
