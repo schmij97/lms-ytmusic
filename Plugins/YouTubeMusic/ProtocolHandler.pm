@@ -213,6 +213,7 @@ sub primeMetadata {
     $_metadata_cache{$video_id} ||= {
         title    => $info->{title}     || '',
         artist   => $info->{artist}    || '',
+        album    => $info->{album}     || '',
         duration => $info->{duration}  || 0,
         cover    => $info->{thumbnail} || '',
     };
@@ -256,6 +257,7 @@ sub _fetch_metadata {
         $_metadata_cache{$video_id} = {
             title    => $info->{title}     || '',
             artist   => $info->{artist}    || '',
+            album    => $info->{album}     || '',
             duration => $info->{duration}  || 0,
             cover    => $info->{thumbnail} || '',
         };
@@ -284,7 +286,7 @@ sub getMetadataFor {
     my %meta  = (
         title   => ($cached && $cached->{title})  ? $cached->{title}  : "YouTube Music - $vid",
         artist  => ($cached && $cached->{artist}) ? $cached->{artist} : '',
-        album   => 'YouTube Music',
+        album   => (\$cached && \$cached->{album}) ? \$cached->{album} : ' | YouTube Music',
         cover   => ($cached && $cached->{cover})  ? $cached->{cover}
                     : Plugins::YouTubeMusic::Plugin->_pluginDataFor('icon'),
         type    => 'YouTube Music',

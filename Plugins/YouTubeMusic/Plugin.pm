@@ -409,7 +409,9 @@ sub _playlist_menu {
         unless ($data && ref $data eq 'HASH') {
             return $callback->({ items => [] });
         }
-        $callback->({ items => _items_to_menu($client, $data->{items} // []) });
+        # playall => 1 tells LMS to queue all tracks from the selected position
+        # forward when tapped — prevents radio triggering on single track selection.
+        $callback->({ items => _items_to_menu($client, $data->{items} // []), playall => 1 });
     });
 }
 

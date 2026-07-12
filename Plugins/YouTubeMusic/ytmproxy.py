@@ -748,11 +748,23 @@ def _prefetch_paths(video_id):
 
 
 def _cleanup_old_prefetch(max_age=600):
+    # Note: on Linux, deleting an open file is safe — the file is unlinked
+    # from the directory but the data remains accessible via the open file
+    # handle until it is closed. So even if a long track is still being
+    # streamed when cleanup runs, the audio will not fail.
+    # We extend the grace period for larger files (likely longer tracks)
+    # to avoid unnecessarily re-resolving them.
     try:
         now = time.time()
         for name in os.listdir(PREFETCH_DIR):
             full = os.path.join(PREFETCH_DIR, name)
-            if os.path.isfile(full) and (now - os.path.getmtime(full)) > max_age:
+            if not os.path.isfile(full):
+                continue
+            size = os.path.getsize(full)
+            # Allow ~1 second per 32KB as a rough track-length estimate
+            # so a 30MB file (approx 15-20 min) gets ~960s grace period
+            age_limit = max(max_age, size // 32768)
+            if (now - os.path.getmtime(full)) > age_limit:
                 os.remove(full)
     except FileNotFoundError:
         pass
@@ -1062,6 +1074,7 @@ def run(port=9876, log_level="INFO"):
         level=getattr(logging, log_level.upper(), logging.INFO),
         format="%(asctime)s [%(levelname)s] %(message)s",
         stream=sys.stderr,
+        force=True,
     )
     server = ThreadingHTTPServer(("0.0.0.0", port), _Handler)
     logging.info("YTMusic proxy listening on 0.0.0.0:%d", port)
