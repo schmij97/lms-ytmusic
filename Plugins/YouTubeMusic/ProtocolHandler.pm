@@ -255,6 +255,14 @@ sub _start_radio {
             return;
         }
 
+        # Prime metadata cache for radio tracks so queue shows
+        # correct titles/artwork instead of raw video IDs
+        for my $track (@tracks) {
+            next unless $track->{videoId};
+            Plugins::YouTubeMusic::ProtocolHandler->primeMetadata(
+                $track->{videoId}, $track
+            );
+        }
         my @urls = map { "ytm://$_->{videoId}" } @tracks;
         $log->info("Adding " . scalar(@urls) . " radio tracks to queue");
 

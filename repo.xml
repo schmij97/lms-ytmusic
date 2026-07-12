@@ -4,13 +4,13 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.10" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.11" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Fixed plugin failed to load error caused by %_radio_active declared in wrong scope. All v1.3.9 fixes included.</changes>
+      <changes lang="EN">Fixed radio tracks showing as raw video IDs in queue — metadata (title, artist, artwork) now primed for all radio tracks before they are added to the queue.</changes>
       <creator>schmij97</creator>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.10/YouTubeMusic-1.3.10.zip</url>
-      <sha>6fc346c14e3e3cd16a8a477462f4e8cc8ac2dc6f</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.11/YouTubeMusic-1.3.11.zip</url>
+      <sha>948554635663472fffc62bcb144261d49bddc089</sha>
     </plugin>
   </plugins>
 </extensions>
