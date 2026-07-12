@@ -147,6 +147,12 @@ sub getNextTrack {
     # Kick off a non-blocking metadata fetch (title/artist/artwork)
     _fetch_metadata($vid, $song);
 
+
+    # Reset radio flag when a new track starts — allows radio to
+    # re-trigger if the queue empties again later.
+    my $client_id = eval { $song->master()->id } // '';
+    delete $_radio_active{$client_id} if $client_id;
+
     _prefetch_next_track($song);
     $successCb->();
 }
@@ -157,7 +163,7 @@ sub _prefetch_next_track {
     my $client = eval { $song->master() };
     unless ($client) { $log->debug("Prefetch: no client"); return; }
 
-    my $current_index = eval { Slim::Player::Source::streamingSongIndex($client) };
+    my $current_index = eval { Slim::Player::Source::playingSongIndex($client) };
     unless (defined $current_index) { $log->debug("Prefetch: no current_index, err=$@"); return; }
 
     my $next_index = $current_index + 1;
@@ -219,9 +225,19 @@ sub primeMetadata {
     };
 }
 
+my %_radio_active;  # tracks which clients have radio running
+
 sub _start_radio {
     my ($client, $video_id) = @_;
     return unless $client && $video_id;
+
+    # Don't trigger radio if already running for this client
+    my $client_id = $client->id // '';
+    if ($_radio_active{$client_id}) {
+        $log->debug("Radio already active for $client_id, skipping");
+        return;
+    }
+    $_radio_active{$client_id} = 1;
 
     $log->info("Starting radio from videoId: $video_id");
 
@@ -286,7 +302,7 @@ sub getMetadataFor {
     my %meta  = (
         title   => ($cached && $cached->{title})  ? $cached->{title}  : "YouTube Music - $vid",
         artist  => ($cached && $cached->{artist}) ? $cached->{artist} : '',
-        album   => (\$cached && \$cached->{album}) ? \$cached->{album} : ' | YouTube Music',
+        album   => ($cached && $cached->{album}) ? $cached->{album} : ' | YouTube Music',
         cover   => ($cached && $cached->{cover})  ? $cached->{cover}
                     : Plugins::YouTubeMusic::Plugin->_pluginDataFor('icon'),
         type    => 'YouTube Music',

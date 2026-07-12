@@ -411,7 +411,20 @@ sub _playlist_menu {
         }
         # playall => 1 tells LMS to queue all tracks from the selected position
         # forward when tapped — prevents radio triggering on single track selection.
-        $callback->({ items => _items_to_menu($client, $data->{items} // []), playall => 1 });
+        my $album_title = $params->{album_title} // '';
+        my $items = $data->{items} // [];
+        if ($album_title) {
+            # Inject album title into each track so it shows correctly in queue
+            for my $item (@$items) {
+                $item->{album} = $album_title if $item->{type} && $item->{type} eq 'song';
+            }
+        }
+        # Prefetch track 1 immediately so it is ready when the user presses
+        # Play — eliminates the 20-second yt-dlp resolution delay on first play.
+        my $first_vid = (grep { $_->{videoId} } @$items)[0]->{videoId} if @$items;
+        Plugins::YouTubeMusic::API->prefetch($first_vid, sub {}) if $first_vid;
+
+        $callback->({ items => _items_to_menu($client, $items), playall => 1 });
     });
 }
 
@@ -442,7 +455,7 @@ sub _items_to_menu {
                 image       => $item->{thumbnail} || '',
                 url         => \&_playlist_menu,
                 play        => "ytmplaylist://$item->{browseId}",
-                passthrough => [{ browseId => $item->{browseId}, browse_type => 'album' }],
+                passthrough => [{ browseId => $item->{browseId}, browse_type => 'album', album_title => $item->{title} }],
             };
         }
         elsif ($type eq 'artist' && $item->{browseId}) {

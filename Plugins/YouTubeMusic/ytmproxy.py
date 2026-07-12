@@ -748,12 +748,10 @@ def _prefetch_paths(video_id):
 
 
 def _cleanup_old_prefetch(max_age=600):
-    # Note: on Linux, deleting an open file is safe — the file is unlinked
-    # from the directory but the data remains accessible via the open file
-    # handle until it is closed. So even if a long track is still being
-    # streamed when cleanup runs, the audio will not fail.
-    # We extend the grace period for larger files (likely longer tracks)
-    # to avoid unnecessarily re-resolving them.
+    # On Linux/Mac, deleting an open file is safe — the inode stays alive
+    # until the last file handle closes so streaming continues uninterrupted.
+    # On Windows, open files are locked and deletion will raise PermissionError;
+    # we catch that and skip the file — it will be cleaned up on next restart.
     try:
         now = time.time()
         for name in os.listdir(PREFETCH_DIR):
@@ -765,12 +763,16 @@ def _cleanup_old_prefetch(max_age=600):
             # so a 30MB file (approx 15-20 min) gets ~960s grace period
             age_limit = max(max_age, size // 32768)
             if (now - os.path.getmtime(full)) > age_limit:
-                os.remove(full)
+                try:
+                    os.remove(full)
+                except PermissionError:
+                    logging.debug("Cannot delete %s (file in use on Windows)", full)
+                except OSError as e:
+                    logging.debug("Cannot delete %s: %s", full, e)
     except FileNotFoundError:
         pass
     except Exception:
         logging.exception("Prefetch cleanup error")
-
 
 def _prefetch_worker(video_id):
     tmp_path, done_path = _prefetch_paths(video_id)
@@ -846,7 +848,13 @@ def stream_audio(video_id):
         "--no-playlist",
         "--quiet",
         "--no-warnings",
+        "--no-check-certificates",
+        "--socket-timeout", "10",
+        "--retries", "2",
+        "--extractor-retries", "2",
+        "--no-part",
         "-f", "bestaudio[ext=m4a]/bestaudio[ext=mp3]/bestaudio",
+        "--js-runtimes", "nodejs",
         "--add-header", "User-Agent:com.google.android.youtube/17.29.34",
         "-o", "-",
         url,
