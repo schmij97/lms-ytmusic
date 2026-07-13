@@ -4,13 +4,13 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.12" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.13" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Added plugin icon and SVG icon for Material skin support.</changes>
+      <changes lang="EN">Fixed plugin icon. Added parallel prefetch for playlist first track to reduce startup delay.</changes>
       <creator>schmij97</creator>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.12/YouTubeMusic-1.3.12.zip</url>
-      <sha>0f38737c4439f28410aac4687e90098c303d809f</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.13/YouTubeMusic-1.3.13.zip</url>
+      <sha>8a6a3b685bdcb6d91d0bcb9ecac105f2ee1ed528</sha>
     </plugin>
   </plugins>
 </extensions>

@@ -41,6 +41,12 @@ sub explodePlaylist {
             return;
         }
 
+        # Prefetch track 1 immediately so yt-dlp resolution runs in
+        # parallel while LMS processes the track list — cuts first-track
+        # delay from ~16s down to ~7s.
+        my $first = (grep { $_->{videoId} } @{ $data->{items} })[0];
+        Plugins::YouTubeMusic::API->prefetch($first->{videoId}, sub {}) if $first;
+
         my @urls;
         for my $track (@{ $data->{items} }) {
             next unless $track->{videoId};
