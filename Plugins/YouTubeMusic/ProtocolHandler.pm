@@ -134,6 +134,7 @@ sub getNextTrack {
         return;
     }
 
+
     my $port       = $prefs->get('proxy_port') || 9876;
     # Use the real LMS server address rather than 127.0.0.1 so that
     # players on separate machines can fetch the stream directly when
@@ -148,11 +149,6 @@ sub getNextTrack {
     # Kick off a non-blocking metadata fetch (title/artist/artwork)
     _fetch_metadata($vid, $song);
 
-
-    # Reset radio flag when a new track starts — allows radio to
-    # re-trigger if the queue empties again later.
-    my $client_id = eval { $song->master()->id } // '';
-    delete $_radio_active{$client_id} if $client_id;
 
     _prefetch_next_track($song);
     $successCb->();
@@ -227,6 +223,14 @@ sub primeMetadata {
 }
 
 
+sub reset_radio {
+    my ($client) = @_;
+    return unless $client;
+    my $client_id = $client->id // '';
+    delete $_radio_active{$client_id} if $client_id;
+    $log->debug("Radio flag reset for $client_id");
+}
+
 sub _start_radio {
     my ($client, $video_id) = @_;
     return unless $client && $video_id;
@@ -268,6 +272,12 @@ sub _start_radio {
 
         # Add tracks to the end of the current playlist
         $client->execute(['playlist', 'addtracks', 'listRef', \@urls]);
+        # Reset radio flag after a delay so radio can fire again
+        # when the added tracks eventually run out
+        Slim::Utils::Timers::setTimer(
+            $client, Time::HiRes::time() + 300,
+            sub { delete $_radio_active{$client_id}; }
+        );
     });
 }
 

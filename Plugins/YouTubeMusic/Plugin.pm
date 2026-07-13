@@ -451,7 +451,7 @@ sub _items_to_menu {
         elsif ($type eq 'album' && $item->{browseId}) {
             push @menu, {
                 name        => $item->{title}  || 'Unknown Album',
-                line2       => join(' • ', grep { $_ } $item->{artist}, $item->{year}),
+                line2       => join(' - ', grep { $_ } $item->{artist}, $item->{year}),
                 image       => $item->{thumbnail} || '',
                 url         => \&_playlist_menu,
                 play        => "ytmplaylist://$item->{browseId}",
@@ -508,7 +508,7 @@ sub _items_to_menu {
 
 sub _song_line2 {
     my $item = shift;
-    return join(' • ', grep { $_ }
+    return join(' - ', grep { $_ }
         $item->{artist}   || '',
         $item->{album}    || '',
         $item->{duration} || '',

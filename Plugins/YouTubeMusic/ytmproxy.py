@@ -593,8 +593,8 @@ def browse_radio(video_id):
         result.append({
             "type":      "song",
             "videoId":   vid,
-            "title":     _text(r.get("title", {})) or f"YouTube Music - {vid}",
-            "artist":    _text(r.get("longBylineText", {})),
+            "title":     _text_runs(r.get("title", {})) or f"YouTube Music - {vid}",
+            "artist":    _text_runs(r.get("longBylineText", {})).split(" • ")[0].split(" • ")[0],
             "thumbnail": thumb,
         })
 
