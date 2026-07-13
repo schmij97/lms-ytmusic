@@ -150,12 +150,42 @@ sub getNextTrack {
     _fetch_metadata($vid, $song);
 
 
-    _prefetch_next_track($song);
+    # Delay prefetch check by 3s so radio addtracks completes first
+    my $prefetch_client = eval { $song->master() };
+    _prefetch_with_client($prefetch_client) if $prefetch_client;
     $successCb->();
+}
+
+sub _prefetch_with_client {
+    my ($client) = @_;
+    return unless $client;
+    my $current_index = eval { Slim::Player::Source::playingSongIndex($client) };
+    return unless defined $current_index;
+    my $next_index = $current_index + 1;
+    my $count      = eval { Slim::Player::Playlist::count($client) } || 0;
+    $log->info("Prefetch: current=$current_index next=$next_index count=$count");
+    if ($next_index >= $count || ($count - $next_index) <= 3) {
+        my $cur_track = eval { Slim::Player::Playlist::track($client, $current_index) };
+        if ($cur_track) {
+            my $cur_url = eval { $cur_track->url } // '';
+            my ($cur_vid) = $cur_url =~ m{^ytm://([A-Za-z0-9_\-]+)};
+            _start_radio($client, $cur_vid) if $cur_vid;
+        }
+        return;
+    }
+    my $next_track = eval { Slim::Player::Playlist::track($client, $next_index) };
+    return unless $next_track;
+    my $next_url = eval { $next_track->url };
+    return unless $next_url;
+    my ($next_vid) = $next_url =~ m{^ytm://([A-Za-z0-9_\-]+)};
+    return unless $next_vid;
+    $log->info("Prefetching next track: $next_vid");
+    Plugins::YouTubeMusic::API->prefetch($next_vid, sub {});
 }
 
 sub _prefetch_next_track {
     my ($song) = @_;
+    $log->info("_prefetch_next_track called");
 
     my $client = eval { $song->master() };
     unless ($client) { $log->debug("Prefetch: no client"); return; }
@@ -244,6 +274,7 @@ sub _start_radio {
     $_radio_active{$client_id} = 1;
 
     $log->info("Starting radio from videoId: $video_id");
+    $log->info("Radio client: " . ($client->id // "unknown") . " name: " . ($client->name // "unknown"));
 
     Plugins::YouTubeMusic::API->browseRadio($video_id, sub {
         my $data = shift;
@@ -271,7 +302,12 @@ sub _start_radio {
         $log->info("Adding " . scalar(@urls) . " radio tracks to queue");
 
         # Add tracks to the end of the current playlist
-        $client->execute(['playlist', 'addtracks', 'listRef', \@urls]);
+        # Add tracks individually — addtracks listRef can fail for some player types
+        for my $url (@urls) {
+            $client->execute(['playlist', 'add', $url]);
+        }
+        # Re-run prefetch now that queue has tracks
+        _prefetch_with_client($client);
         # Reset radio flag after a delay so radio can fire again
         # when the added tracks eventually run out
         Slim::Utils::Timers::setTimer(

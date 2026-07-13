@@ -138,7 +138,49 @@ sub postinitPlugin {
     } else {
         $log->info("youtube:// already handled by another plugin, skipping shim");
     }
+
+    # Subscribe to player stop events so we can trigger radio
+    # when the queue empties and the player stops naturally
+    Slim::Control::Request::subscribe(
+        \&_on_playlist_stop,
+        [['playlist'], ['stop']]
+    );
 }
+
+sub _on_playlist_stop {
+    my $request = shift;
+    my $client  = $request->client() or return;
+
+    # Only act on ytm:// tracks
+    my $current = eval { Slim::Player::Playlist::track($client,
+        Slim::Player::Source::playingSongIndex($client)) };
+    return unless $current;
+    my $url = eval { $current->url } // '';
+    return unless $url =~ m{^ytm://};
+
+    # Only trigger if queue is empty or nearly empty
+    my $count = eval { Slim::Player::Playlist::count($client) } || 0;
+    my $index = eval { Slim::Player::Source::playingSongIndex($client) } // 0;
+    return unless ($count - $index) <= 1;
+
+    my ($vid) = $url =~ m{^ytm://([A-Za-z0-9_\-]+)};
+    return unless $vid;
+
+    # Delay to avoid firing during track transitions — check player is
+    # still stopped after 5 seconds before triggering radio
+    Slim::Utils::Timers::setTimer(
+        $client, Time::HiRes::time() + 5,
+        sub {
+            my $mode = Slim::Player::Source::playmode($client);
+            return unless $mode eq 'stop';
+            $log->info("Player genuinely stopped — triggering radio");
+            Plugins::YouTubeMusic::ProtocolHandler::reset_radio($client);
+            Plugins::YouTubeMusic::ProtocolHandler::_start_radio($client, $vid);
+            $client->execute(['play']);
+        }
+    );
+}
+
 
 sub _top_level {
     my ($client, $callback, $args) = @_;
