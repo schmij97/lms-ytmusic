@@ -2,7 +2,7 @@
 <extension>
     <name>PLUGIN_YOUTUBEMUSIC</name>
     <module>Plugins::YouTubeMusic::Plugin</module>
-    <version>1.3.18</version>
+    <version>1.3.19</version>
     <description>PLUGIN_YOUTUBEMUSIC_DESC</description>
     <icon>plugins/YouTubeMusic/html/YouTubeMusic_svg.png</icon>
     <iconsvg>plugins/YouTubeMusic/html/YouTubeMusic.svg</iconsvg>
@@ -13,4 +13,5 @@
         <maxVersion>*</maxVersion>
     </targetApplication>
     <creator>YTMusic Plugin</creator>
+    <category>musicservices</category>
 </extension>
