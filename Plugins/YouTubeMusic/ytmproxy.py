@@ -954,13 +954,20 @@ class _Handler(BaseHTTPRequestHandler):
                     if not ytdlp:
                         self._send_json({"status": "error", "message": "yt-dlp not found"})
                     else:
-                        # Try yt-dlp -U first (works on piCorePlayer and other
-                        # systems without pip). Fall back to pip if -U fails
-                        # (e.g. when installed via pip on Debian/Ubuntu).
+                        # Try yt-dlp -U first (works on piCorePlayer and
+                        # systems where yt-dlp is a standalone binary)
                         result = subprocess.run(
                             [ytdlp, "-U"],
                             capture_output=True, text=True, timeout=120
                         )
+                        if result.returncode != 0:
+                            # Try pipx upgrade (Ubuntu/Debian pipx installs)
+                            pipx = shutil.which("pipx")
+                            if pipx:
+                                result = subprocess.run(
+                                    [pipx, "upgrade", "yt-dlp"],
+                                    capture_output=True, text=True, timeout=120
+                                )
                         if result.returncode != 0:
                             # Fall back to pip upgrade
                             result = subprocess.run(
