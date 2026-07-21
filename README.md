@@ -59,6 +59,18 @@ sudo pip3 install yt-dlp --break-system-packages
 
 > **Tip:** Once installed, you can update yt-dlp at any time from **Settings → Advanced → YouTube Music → Update yt-dlp** without needing command line access.
 
+### Ubuntu/Debian notes
+
+The `apt` version of yt-dlp is severely outdated (2022). Use pipx instead:
+
+sudo apt install pipx
+pipx install yt-dlp
+
+
+To update later: `pipx upgrade yt-dlp`
+
+The update button in **Settings → Advanced → YouTube Music** also supports pipx installs.
+
 ## Installation (recommended)
 
 1. Make sure the requirements above are installed.
