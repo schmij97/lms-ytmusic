@@ -866,10 +866,16 @@ def download_ytdlp():
             logging.info("No binary available for this platform, using pip")
             result = subprocess.run(
                 [sys.executable, "-m", "pip", "install", "yt-dlp",
-                 "--upgrade", "--break-system-packages", "-q"],
+                 "--upgrade", "--break-system-packages",
+                 "--target", PLUGIN_DIR, "-q"],
                 capture_output=True, text=True, timeout=120
             )
             if result.returncode == 0:
+                # Create wrapper script so _find_ytdlp can find it
+                wrapper = os.path.join(PLUGIN_DIR, "yt-dlp")
+                with open(wrapper, "w") as f:
+                    f.write(f"#!/bin/sh\nexec {sys.executable} -m yt_dlp \"$@\"\n")
+                os.chmod(wrapper, 0o755)
                 return True, version
             return False, result.stderr.strip() or "pip install failed"
 
@@ -1021,6 +1027,7 @@ class _Handler(BaseHTTPRequestHandler):
         body = json.dumps(obj, ensure_ascii=False).encode()
         self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
