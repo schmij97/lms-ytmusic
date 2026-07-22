@@ -4,14 +4,14 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.20" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.21" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Added pipx support to yt-dlp updater — update button now works for Ubuntu/Debian users who installed yt-dlp via pipx.</changes>
+      <changes lang="EN">Added Download yt-dlp button — downloads the correct binary for your platform directly into the plugin directory. No sudo required, no PATH issues. Supports Linux x86_64, aarch64, armv7l, macOS, and Windows.</changes>
       <creator>schmij97</creator>
       <category>musicservices</category>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.20/YouTubeMusic-1.3.20.zip</url>
-      <sha>b3a97a544323c2dc0e3b879f90340162b955ed26</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.21/YouTubeMusic-1.3.21.zip</url>
+      <sha>1d0cf861e71ab2132c205323fb242e066393cb13</sha>
     </plugin>
   </plugins>
 </extensions>

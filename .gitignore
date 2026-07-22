@@ -1,2 +1,5 @@
 Plugins/YouTubeMusic/__pycache__/
 *.zip
+Plugins/YouTubeMusic/yt-dlp
+Plugins/YouTubeMusic/yt-dlp.exe
+Plugins/YouTubeMusic/_internal/

@@ -822,14 +822,106 @@ def get_prefetched_path(video_id):
         except OSError:
             pass
     return None
+# Plugin directory — yt-dlp binary stored here so no sudo needed
+PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
+YTDLP_BIN  = os.path.join(PLUGIN_DIR, "yt-dlp")
+
+def _platform_ytdlp_asset():
+    """Return the yt-dlp GitHub asset name for the current platform."""
+    import platform
+    machine = platform.machine().lower()
+    system  = platform.system().lower()
+    if system == "windows":
+        return "yt-dlp.exe", False
+    if system == "darwin":
+        return "yt-dlp_macos", False
+    # Linux
+    if machine in ("aarch64", "arm64"):
+        return "yt-dlp_linux_aarch64", False
+    if machine in ("armv7l", "armv6l"):
+        return "yt-dlp_linux_armv7l.zip", True   # zip only
+    if machine == "x86_64":
+        return "yt-dlp_linux", False
+    # fallback — generic Python wheel
+    return "yt-dlp", False
+
+
+def download_ytdlp():
+    """Download the latest yt-dlp binary into the plugin directory.
+    Returns (ok, message) tuple."""
+    import urllib.request, zipfile, io
+    try:
+        # Get latest release info
+        api_url = "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest"
+        with urllib.request.urlopen(api_url, timeout=15) as resp:
+            release = json.loads(resp.read())
+
+        version  = release["tag_name"]
+        asset_name, is_zip = _platform_ytdlp_asset()
+
+        # Find download URL
+        dl_url = None
+        for asset in release["assets"]:
+            if asset["name"] == asset_name:
+                dl_url = asset["browser_download_url"]
+                break
+
+        if not dl_url:
+            return False, f"No asset found for {asset_name}"
+
+        logging.info("Downloading yt-dlp %s (%s)", version, asset_name)
+
+        with urllib.request.urlopen(dl_url, timeout=120) as resp:
+            data = resp.read()
+
+        if is_zip:
+            # Extract entire ZIP to plugin directory (includes _internal libs)
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                zf.extractall(PLUGIN_DIR)
+            # Find the main binary in the extracted files
+            bin_name = next(
+                (n for n in zipfile.ZipFile(io.BytesIO(data)).namelist()
+                 if n.endswith("yt-dlp") and "/" not in n.rstrip("/")),
+                None
+            )
+            if not bin_name:
+                # fallback — look for any executable at root level
+                bin_name = next(
+                    (n for n in zipfile.ZipFile(io.BytesIO(data)).namelist()
+                     if not n.endswith("/") and "/" not in n),
+                    None
+                )
+            extracted_bin = os.path.join(PLUGIN_DIR, bin_name) if bin_name else YTDLP_BIN
+            os.chmod(extracted_bin, 0o755)
+            # Create symlink/copy to standard YTDLP_BIN path if different
+            if extracted_bin != YTDLP_BIN:
+                if os.path.exists(YTDLP_BIN):
+                    os.remove(YTDLP_BIN)
+                os.symlink(extracted_bin, YTDLP_BIN)
+        else:
+            # Write single binary to plugin directory
+            with open(YTDLP_BIN, "wb") as f:
+                f.write(data)
+            os.chmod(YTDLP_BIN, 0o755)
+
+        logging.info("yt-dlp %s installed to %s", version, YTDLP_BIN)
+        return True, version
+
+    except Exception as e:
+        logging.exception("Failed to download yt-dlp")
+        return False, str(e)
+
+
 def _find_ytdlp():
+    # Check plugin directory first (no sudo needed, always found)
+    if os.path.isfile(YTDLP_BIN) and os.access(YTDLP_BIN, os.X_OK):
+        return YTDLP_BIN
+    # Fall back to system PATH
     for name in ("yt-dlp", "yt_dlp", "youtube-dl"):
-        path = shutil.which(name)
-        if path:
-            return path
+        p = shutil.which(name)
+        if p:
+            return p
     return None
-
-
 def stream_audio(video_id):
     """
     Yield MP3 audio bytes for the given video ID by piping yt-dlp's stdout
@@ -948,6 +1040,12 @@ class _Handler(BaseHTTPRequestHandler):
                     "format": _AUDIO_FORMAT,
                     "mime":   _AUDIO_MIME,
                 })
+            elif path == "/download_ytdlp":
+                ok, msg = download_ytdlp()
+                if ok:
+                    self._send_json({"status": "ok", "version": msg})
+                else:
+                    self._send_json({"status": "error", "message": msg})
             elif path == "/update_ytdlp":
                 try:
                     ytdlp = _find_ytdlp()
