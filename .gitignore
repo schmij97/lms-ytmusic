@@ -3,3 +3,6 @@ Plugins/YouTubeMusic/__pycache__/
 Plugins/YouTubeMusic/yt-dlp
 Plugins/YouTubeMusic/yt-dlp.exe
 Plugins/YouTubeMusic/_internal/
+Plugins/YouTubeMusic/yt-dlp_linux_armv7l
+Plugins/YouTubeMusic/yt-dlp_linux
+Plugins/YouTubeMusic/yt-dlp_macos
