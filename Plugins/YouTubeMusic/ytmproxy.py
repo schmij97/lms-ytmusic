@@ -839,7 +839,9 @@ def _platform_ytdlp_asset():
     if machine in ("aarch64", "arm64"):
         return "yt-dlp_linux_aarch64", False
     if machine in ("armv7l", "armv6l"):
-        return "yt-dlp_linux_armv7l.zip", True   # zip only
+        # Note: yt-dlp dropped armv7l binary builds after Sept 2025
+        # Fall back to pip install for this platform
+        return None, False
     if machine == "x86_64":
         return "yt-dlp_linux", False
     # fallback — generic Python wheel
@@ -858,6 +860,18 @@ def download_ytdlp():
 
         version  = release["tag_name"]
         asset_name, is_zip = _platform_ytdlp_asset()
+
+        # If no binary available for this platform, use pip
+        if asset_name is None:
+            logging.info("No binary available for this platform, using pip")
+            result = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "yt-dlp",
+                 "--upgrade", "--break-system-packages", "-q"],
+                capture_output=True, text=True, timeout=120
+            )
+            if result.returncode == 0:
+                return True, version
+            return False, result.stderr.strip() or "pip install failed"
 
         # Find download URL
         dl_url = None
