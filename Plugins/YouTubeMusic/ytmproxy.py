@@ -822,9 +822,11 @@ def get_prefetched_path(video_id):
         except OSError:
             pass
     return None
-# Plugin directory — yt-dlp binary stored here so no sudo needed
+# Plugin directory — yt-dlp binary stored in Bin/ subdir per LMS convention
+# LMS automatically adds <plugin>/Bin to PATH so it will be found system-wide
 PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
-YTDLP_BIN  = os.path.join(PLUGIN_DIR, "yt-dlp")
+BIN_DIR    = os.path.join(PLUGIN_DIR, "Bin")
+YTDLP_BIN  = os.path.join(BIN_DIR, "yt-dlp")
 
 def _platform_ytdlp_asset():
     """Return the yt-dlp GitHub asset name for the current platform."""
@@ -871,8 +873,9 @@ def download_ytdlp():
                 capture_output=True, text=True, timeout=120
             )
             if result.returncode == 0:
-                # Create wrapper script so _find_ytdlp can find it
-                wrapper = os.path.join(PLUGIN_DIR, "yt-dlp")
+                # Create wrapper script in Bin/ directory
+                os.makedirs(BIN_DIR, exist_ok=True)
+                wrapper = os.path.join(BIN_DIR, "yt-dlp")
                 with open(wrapper, "w") as f:
                     f.write(f"#!/bin/sh\nexec {sys.executable} -m yt_dlp \"$@\"\n")
                 os.chmod(wrapper, 0o755)
@@ -889,31 +892,32 @@ def download_ytdlp():
         if not dl_url:
             return False, f"No asset found for {asset_name}"
 
+        # Ensure Bin directory exists
+        os.makedirs(BIN_DIR, exist_ok=True)
         logging.info("Downloading yt-dlp %s (%s)", version, asset_name)
 
         with urllib.request.urlopen(dl_url, timeout=120) as resp:
             data = resp.read()
 
         if is_zip:
-            # Extract entire ZIP to plugin directory (includes _internal libs)
+            # Extract entire ZIP to Bin/ directory (includes _internal libs)
             with zipfile.ZipFile(io.BytesIO(data)) as zf:
-                zf.extractall(PLUGIN_DIR)
+                zf.extractall(BIN_DIR)
             # Find the main binary in the extracted files
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                names = zf.namelist()
             bin_name = next(
-                (n for n in zipfile.ZipFile(io.BytesIO(data)).namelist()
-                 if n.endswith("yt-dlp") and "/" not in n.rstrip("/")),
+                (n for n in names if n.endswith("yt-dlp") and "/" not in n.rstrip("/")),
                 None
             )
             if not bin_name:
-                # fallback — look for any executable at root level
                 bin_name = next(
-                    (n for n in zipfile.ZipFile(io.BytesIO(data)).namelist()
-                     if not n.endswith("/") and "/" not in n),
+                    (n for n in names if not n.endswith("/") and "/" not in n),
                     None
                 )
-            extracted_bin = os.path.join(PLUGIN_DIR, bin_name) if bin_name else YTDLP_BIN
+            extracted_bin = os.path.join(BIN_DIR, bin_name) if bin_name else YTDLP_BIN
             os.chmod(extracted_bin, 0o755)
-            # Create symlink/copy to standard YTDLP_BIN path if different
+            # Create symlink to standard YTDLP_BIN path if different
             if extracted_bin != YTDLP_BIN:
                 if os.path.exists(YTDLP_BIN):
                     os.remove(YTDLP_BIN)
