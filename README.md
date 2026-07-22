@@ -71,6 +71,12 @@ To update later: `pipx upgrade yt-dlp`
 
 The update button in **Settings → Advanced → YouTube Music** also supports pipx installs.
 
+## Quick Setup (no command line needed)
+
+Once the plugin is installed via the repo URL below, go to **Settings → Advanced → YouTube Music** and click **Download yt-dlp**. This automatically downloads the correct yt-dlp binary for your platform directly into the plugin directory — no sudo required, no PATH issues.
+
+Use the **Update yt-dlp** button in the same location to keep it current as YouTube changes its systems.
+
 ## Installation (recommended)
 
 1. Make sure the requirements above are installed.
