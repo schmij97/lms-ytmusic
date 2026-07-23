@@ -46,7 +46,17 @@ sub explodePlaylist {
         for my $track (@{ $data->{items} }) {
             next unless $track->{videoId};
             Plugins::YouTubeMusic::ProtocolHandler->primeMetadata($track->{videoId}, $track);
-            push @urls, "ytm://$track->{videoId}";
+            my $url = "ytm://$track->{videoId}";
+            push @urls, $url;
+            # Update LMS track database so queue shows title/artist immediately
+            if ($track->{title}) {
+                my $lms_track = Slim::Schema->objectForUrl({ url => $url, create => 1 });
+                if ($lms_track) {
+                    $lms_track->title($track->{title});
+                    $lms_track->artist($track->{artist} || '');
+                    $lms_track->update();
+                }
+            }
         }
 
         $log->info("Exploded playlist $browse_id into " . scalar(@urls) . " tracks");

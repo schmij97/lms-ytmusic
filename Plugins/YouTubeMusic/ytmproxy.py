@@ -986,6 +986,7 @@ def stream_audio(video_id):
         "-write_id3v1", "0",
         "-f", _AUDIO_FORMAT,
         "-codec:a", _AUDIO_CODEC,
+        "-flush_packets", "1",
     ]
     if _AUDIO_CODEC not in ("flac", "pcm_s16le"):
         ffmpeg_cmd += ["-b:a", "192k"]
