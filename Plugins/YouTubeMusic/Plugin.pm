@@ -98,21 +98,32 @@ sub _start_proxy {
 
     $log->info("Starting YouTube Music proxy: $python $script --port $port");
 
-    my $pid = fork();
-    if (!defined $pid) {
-        $log->error("fork() failed: $!");
-        return;
+    my $is_windows = $^O eq 'MSWin32';
+    if ($is_windows) {
+        # fork() is emulated on Windows via threads which conflicts with LMS
+        # Use system(1,...) instead which spawns a true background process
+        my $pid = system(1, $python, $script, '--port', $port, '--log-level', 'WARNING');
+        if (!$pid) {
+            $log->error("system(1,...) failed: $!");
+            return;
+        }
+        $PROXY_PID = $pid;
+        $log->info("Proxy started (PID $pid) via system(1,...) on Windows");
+    } else {
+        my $pid = fork();
+        if (!defined $pid) {
+            $log->error("fork() failed: $!");
+            return;
+        }
+        if ($pid == 0) {
+            exec($python, $script, '--port', $port, '--log-level', 'WARNING') or do {
+                $log->error("exec failed: $!");
+                exit 1;
+            };
+        }
+        $PROXY_PID = $pid;
+        $log->info("Proxy started (PID $pid)");
     }
-
-    if ($pid == 0) {
-        exec($python, $script, '--port', $port, '--log-level', 'WARNING') or do {
-            $log->error("exec failed: $!");
-            exit 1;
-        };
-    }
-
-    $PROXY_PID = $pid;
-    $log->info("Proxy started (PID $pid)");
 }
 
 sub _find_python {
