@@ -989,10 +989,6 @@ def stream_audio(video_id):
     ]
     if _AUDIO_CODEC not in ("flac", "pcm_s16le"):
         ffmpeg_cmd += ["-b:a", "192k"]
-    if _AUDIO_CODEC == "flac":
-        # Lower compression level = faster encoding = smoother streaming
-        # compression_level 0 is fastest, 12 is slowest/smallest
-        ffmpeg_cmd += ["-compression_level", "0"]
     ffmpeg_cmd.append("pipe:1")
 
     logging.info("Streaming videoId=%s", video_id)
