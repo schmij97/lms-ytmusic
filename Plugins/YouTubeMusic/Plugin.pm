@@ -328,6 +328,7 @@ sub _my_playlists_menu {
             name        => $name,
             url         => \&_playlist_menu,
             play        => "ytmplaylist://$browse_id",
+            type        => 'playlist',
             passthrough => [{ browseId => $browse_id, browse_type => 'playlist' }],
         };
     }
@@ -431,7 +432,7 @@ sub _artist_menu {
                 name => $section->{title} || 'Tracks',
                 url  => sub {
                     my ($c, $cb) = @_;
-                    $cb->({ items => _items_to_menu($c, $section->{items} // []) });
+                    $cb->({ items => _items_to_menu($c, $section->{items} // [], { playall => 1 }), playall => 1 });
                 },
             }
         } @{ $data->{sections} // [] };
@@ -451,8 +452,10 @@ sub _playlist_menu {
         unless ($data && ref $data eq 'HASH') {
             return $callback->({ items => [] });
         }
-        # playall => 1 tells LMS to queue all tracks from the selected position
-        # forward when tapped — prevents radio triggering on single track selection.
+        # Per-item playall => 1 tells LMS to queue all tracks from the selected
+        # position forward when tapped — prevents radio triggering on single
+        # track selection. LMS only honours playall per item, not on the feed
+        # (Slim/Control/XMLBrowser.pm sets touchToPlaySingle when absent).
         my $album_title = $params->{album_title} // '';
         my $items = $data->{items} // [];
         if ($album_title) {
@@ -466,12 +469,13 @@ sub _playlist_menu {
         my $first_vid = (grep { $_->{videoId} } @$items)[0]->{videoId} if @$items;
         Plugins::YouTubeMusic::API->prefetch($first_vid, sub {}) if $first_vid;
 
-        $callback->({ items => _items_to_menu($client, $items), playall => 1 });
+        $callback->({ items => _items_to_menu($client, $items, { playall => 1 }), playall => 1 });
     });
 }
 
 sub _items_to_menu {
-    my ($client, $items) = @_;
+    my ($client, $items, $opts) = @_;
+    my $playall = ($opts && $opts->{playall}) ? 1 : 0;
     my @menu;
 
     for my $item (@{ $items // [] }) {
@@ -488,6 +492,7 @@ sub _items_to_menu {
                 play      => $ytm_url,
                 type      => 'audio',
                 on_select => 'play',
+                $playall ? ( playall => 1 ) : (),
             };
         }
         elsif ($type eq 'album' && $item->{browseId}) {
@@ -497,6 +502,7 @@ sub _items_to_menu {
                 image       => $item->{thumbnail} || '',
                 url         => \&_playlist_menu,
                 play        => "ytmplaylist://$item->{browseId}",
+                type        => 'playlist',
                 passthrough => [{ browseId => $item->{browseId}, browse_type => 'album', album_title => $item->{title} }],
             };
         }
@@ -515,6 +521,7 @@ sub _items_to_menu {
                 image       => $item->{thumbnail} || '',
                 url         => \&_playlist_menu,
                 play        => "ytmplaylist://$item->{browseId}",
+                type        => 'playlist',
                 passthrough => [{ browseId => $item->{browseId}, browse_type => 'playlist' }],
             };
         }
@@ -527,7 +534,10 @@ sub _items_to_menu {
                 url         => ($btype eq 'artist') ? \&_artist_menu : \&_playlist_menu,
                 passthrough => [{ browseId => $item->{browseId}, browse_type => $btype }],
             );
-            $entry{play} = "ytmplaylist://$item->{browseId}" unless $btype eq 'artist';
+            unless ($btype eq 'artist') {
+                $entry{play} = "ytmplaylist://$item->{browseId}";
+                $entry{type} = 'playlist';
+            }
             push @menu, \%entry;
         }
         elsif ($item->{videoId}) {
@@ -541,6 +551,7 @@ sub _items_to_menu {
                 play      => $ytm_url,
                 type      => 'audio',
                 on_select => 'play',
+                $playall ? ( playall => 1 ) : (),
             };
         }
     }
