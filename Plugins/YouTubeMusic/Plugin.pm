@@ -116,9 +116,17 @@ sub _start_proxy {
 }
 
 sub _find_python {
-    for my $py (qw(python3 python)) {
-        my $path = `which $py 2>/dev/null`; chomp $path;
-        return $path if $path && -x $path;
+    # On Windows use "where", on Unix use "which"
+    my $is_windows = $^O eq 'MSWin32';
+    my $finder = $is_windows ? 'where' : 'which';
+    # Check python3 first (Unix), then python, then py (Windows launcher)
+    my @candidates = $is_windows ? qw(python3 python py) : qw(python3 python);
+    for my $py (@candidates) {
+        my $path = `$finder $py 2>/dev/null`; chomp $path;
+        # "where" may return multiple lines — take the first
+        $path = (split /\n/, $path)[0] if $is_windows;
+        $path =~ s/\r//g if $is_windows;  # strip carriage returns
+        return $path if $path && -e $path;
     }
     return undef;
 }
