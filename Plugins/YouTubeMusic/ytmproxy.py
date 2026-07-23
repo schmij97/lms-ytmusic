@@ -717,15 +717,14 @@ def _detect_audio_codec():
         if "libmp3lame" in output:
             logging.info("ffmpeg codec: libmp3lame (MP3)")
             return "libmp3lame", "mp3", "audio/mpeg"
-        elif "flac" in output:
-            # FLAC is universally supported by Squeezebox hardware and
-            # is a better fallback than AAC (which hardware decoders
-            # often can't handle). piCorePlayer's ffmpeg has flac.
-            logging.info("ffmpeg codec: flac (FLAC fallback - hardware compatible)")
-            return "flac", "flac", "audio/flac"
         elif "aac" in output:
+            # AAC preferred over FLAC — LMS won't need to transcode AAC
+            # for most players, avoiding double-transcoding stuttering
             logging.info("ffmpeg codec: aac (AAC fallback)")
             return "aac", "adts", "audio/aac"
+        elif "flac" in output:
+            logging.info("ffmpeg codec: flac (FLAC fallback)")
+            return "flac", "flac", "audio/flac"
         else:
             logging.warning("No suitable ffmpeg codec found, defaulting to mp3")
             return "libmp3lame", "mp3", "audio/mpeg"
