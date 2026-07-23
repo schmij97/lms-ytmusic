@@ -122,11 +122,15 @@ sub _find_python {
     # Check python3 first (Unix), then python, then py (Windows launcher)
     my @candidates = $is_windows ? qw(python3 python py) : qw(python3 python);
     for my $py (@candidates) {
-        my $path = `$finder $py 2>/dev/null`; chomp $path;
+        my $null = $is_windows ? '2>nul' : '2>/dev/null';
+        my $path = `$finder $py $null`; chomp $path;
         # "where" may return multiple lines — take the first
         $path = (split /\n/, $path)[0] if $is_windows;
-        $path =~ s/\r//g if $is_windows;  # strip carriage returns
-        return $path if $path && -e $path;
+        $path =~ s/\r//g;  # strip carriage returns on any platform
+        next unless $path;
+        # On Windows, also try without -e check since path may have quotes
+        $path =~ s/^"(.*)"$/$1/;  # strip surrounding quotes if any
+        return $path if -e $path;
     }
     return undef;
 }
