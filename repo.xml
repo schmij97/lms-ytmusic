@@ -4,14 +4,14 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.32" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.33" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Reverted codec fallback order to MP3 → FLAC → AAC. AAC is rejected by Squeezebox Radio hardware firmware. FLAC is more widely supported by both hardware players and squeezelite.</changes>
+      <changes lang="EN">Fixed track skipping issue introduced in v1.3.31 — added Connection: close header to prevent HTTP/1.1 keep-alive connection reuse which was causing 0:00-0:01 loops when skipping tracks.</changes>
       <creator>schmij97</creator>
       <category>musicservices</category>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.32/YouTubeMusic-1.3.32.zip</url>
-      <sha>fe0df380dc43673f2b6bf286a1237898235a6523</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.33/YouTubeMusic-1.3.33.zip</url>
+      <sha>29e91239d7438ea3e3ad1b9034d547de25c00c11</sha>
     </plugin>
   </plugins>
 </extensions>

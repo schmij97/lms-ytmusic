@@ -1159,6 +1159,7 @@ class _Handler(BaseHTTPRequestHandler):
                         self.send_header("Content-Type", _AUDIO_MIME)
                         self.send_header("Content-Length", str(size))
                         self.send_header("Cache-Control", "no-cache")
+                        self.send_header("Connection", "close")
                         self.end_headers()
                         with open(cached_path, "rb") as f:
                             while True:
@@ -1178,6 +1179,7 @@ class _Handler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", _AUDIO_MIME)
                 self.send_header("Transfer-Encoding", "chunked")
                 self.send_header("Cache-Control", "no-cache")
+                self.send_header("Connection", "close")
                 self.end_headers()
                 try:
                     for chunk in stream_audio(vid):
