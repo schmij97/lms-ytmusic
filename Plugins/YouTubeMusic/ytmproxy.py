@@ -1179,7 +1179,7 @@ class _Handler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", _AUDIO_MIME)
                 self.send_header("Transfer-Encoding", "chunked")
                 self.send_header("Cache-Control", "no-cache")
-                self.send_header("Connection", "close")
+                self.send_header("icy-metaint", "0")
                 self.end_headers()
                 try:
                     for chunk in stream_audio(vid):
