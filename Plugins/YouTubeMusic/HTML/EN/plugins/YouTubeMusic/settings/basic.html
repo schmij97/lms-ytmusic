@@ -2,6 +2,7 @@
 [% PROCESS settings/header.html %]
 
   [% WRAPPER setting title="yt-dlp" desc="Download or update yt-dlp. yt-dlp is used to resolve YouTube stream URLs and must be kept up to date as YouTube changes its systems. Use 'Download' for first-time setup (no sudo required) or 'Update' to upgrade an existing install." %]
+    <span id="ytdlpInstalled" style="margin-right:10px;font-weight:bold;"></span>
     <button type="button" id="ytdlpDownloadBtn" onclick="downloadYtDlp()">Download yt-dlp</button>
     <button type="button" id="ytdlpUpdateBtn" onclick="updateYtDlp()" style="margin-left:8px;">Update yt-dlp</button>
     <span id="ytdlpStatus" style="margin-left:10px;"></span>
@@ -28,6 +29,26 @@
                 document.getElementById('ytdlpUpdateBtn').disabled = false;
             });
     }
+    // Check yt-dlp status on page load
+    (function() {
+        fetch('http://' + window.location.hostname + ':9876/ytdlp_status')
+            .then(r => r.json())
+            .then(d => {
+                var el = document.getElementById('ytdlpInstalled');
+                if (d.installed) {
+                    el.textContent = '[OK] yt-dlp ' + d.version + ' installed';
+                    el.style.color = 'green';
+                } else {
+                    el.textContent = '[NOT INSTALLED] yt-dlp not installed';
+                    el.style.color = 'red';
+                }
+            })
+            .catch(function() {
+                var el = document.getElementById('ytdlpInstalled');
+                el.textContent = '? status unknown';
+                el.style.color = 'orange';
+            });
+    })();
     function downloadYtDlp() {
         ytdlpAction('download_ytdlp', document.getElementById('ytdlpDownloadBtn'),
             document.getElementById('ytdlpStatus'), 'Downloading... (may take 30-60 seconds)');

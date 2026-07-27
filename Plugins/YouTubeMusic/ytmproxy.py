@@ -1054,6 +1054,17 @@ class _Handler(BaseHTTPRequestHandler):
         try:
             if path == "/ping":
                 self._send_json({"status": "ok"})
+            elif path == "/ytdlp_status":
+                ytdlp_path = _find_ytdlp()
+                if ytdlp_path:
+                    import subprocess as _sp
+                    try:
+                        ver = _sp.run([ytdlp_path, "--version"], capture_output=True, text=True, timeout=5)
+                        self._send_json({"installed": True, "version": ver.stdout.strip(), "path": ytdlp_path})
+                    except Exception:
+                        self._send_json({"installed": True, "version": "unknown", "path": ytdlp_path})
+                else:
+                    self._send_json({"installed": False, "version": None, "path": None})
             elif path == "/search":
                 q = p("q")
                 if not q:
