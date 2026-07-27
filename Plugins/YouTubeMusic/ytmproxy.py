@@ -959,6 +959,7 @@ def stream_audio(video_id):
     url = f"https://music.youtube.com/watch?v={video_id}"
 
     ytdlp_cmd = [
+        "nice", "-n", "10",
         ytdlp,
         "--no-playlist",
         "--quiet",
@@ -976,6 +977,7 @@ def stream_audio(video_id):
     ]
 
     ffmpeg_cmd = [
+        "nice", "-n", "10",
         "ffmpeg",
         "-loglevel", "error",
         "-i", "pipe:0",
@@ -988,6 +990,8 @@ def stream_audio(video_id):
     ]
     if _AUDIO_CODEC not in ("flac", "pcm_s16le"):
         ffmpeg_cmd += ["-b:a", "192k"]
+    if _AUDIO_CODEC == "flac":
+        ffmpeg_cmd += ["-sample_fmt", "s16"]
     ffmpeg_cmd.append("pipe:1")
 
     logging.info("Streaming videoId=%s", video_id)
