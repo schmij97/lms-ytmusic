@@ -738,6 +738,35 @@ PREFETCH_DIR = "/tmp/ytmproxy_prefetch"
 _prefetch_started = set()
 _prefetch_lock = threading.Lock()
 
+# DownloadManager: one threading.Event per video_id
+# Multiple HTTP handlers waiting for the same video share one Event
+class _DownloadManager:
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._jobs = {}  # video_id -> threading.Event
+
+    def wait_for(self, video_id, timeout=120):
+        """Wait for video_id to be cached. Returns True if cached, False if timeout."""
+        if get_prefetched_path(video_id):
+            return True
+        with self._lock:
+            if video_id not in self._jobs:
+                self._jobs[video_id] = threading.Event()
+                start_prefetch(video_id)
+            event = self._jobs[video_id]
+        logging.info("Cache-first: waiting for %s", video_id)
+        event.wait(timeout=timeout)
+        return bool(get_prefetched_path(video_id))
+
+    def notify(self, video_id):
+        """Called by prefetch worker when download completes."""
+        with self._lock:
+            event = self._jobs.pop(video_id, None)
+        if event:
+            event.set()
+
+_download_manager = _DownloadManager()
+
 def _prefetch_paths(video_id):
     os.makedirs(PREFETCH_DIR, exist_ok=True)
     ext = _AUDIO_FORMAT if _AUDIO_FORMAT != "adts" else "aac"
@@ -781,6 +810,7 @@ def _prefetch_worker(video_id):
                 f.write(chunk)
         os.replace(tmp_path, done_path)
         logging.info("Prefetch complete for %s", video_id)
+        _download_manager.notify(video_id)
     except Exception:
         logging.exception("Prefetch failed for %s", video_id)
         try:
@@ -1192,47 +1222,32 @@ class _Handler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", _AUDIO_MIME)
                 self.send_header("Transfer-Encoding", "chunked")
                 self.send_header("Cache-Control", "no-cache")
-                # Progressive serving: wait for .part file to have data,
-                # then serve it while download continues in background
-                tmp_path, done_path = _prefetch_paths(vid)
+                # Cache-first: wait for download to complete before serving
                 if not get_prefetched_path(vid):
-                    start_prefetch(vid)
-                # Wait up to 14 seconds for .part file to have data
-                for _ in range(28):
-                    if (os.path.exists(tmp_path) and os.path.getsize(tmp_path) > 65536) or os.path.exists(done_path):
-                        break
-                    time.sleep(0.5)
-                # Serve progressively from .part file
-                serve_path = done_path if os.path.exists(done_path) else tmp_path
-                if os.path.exists(serve_path) and os.path.getsize(serve_path) > 0:
+                    _download_manager.wait_for(vid)
+                cached_path2 = get_prefetched_path(vid)
+                if cached_path2:
                     try:
+                        size2 = os.path.getsize(cached_path2)
                         self.send_response(200)
                         self.send_header("Content-Type", _AUDIO_MIME)
-                        self.send_header("Transfer-Encoding", "chunked")
+                        self.send_header("Content-Length", str(size2))
                         self.send_header("Cache-Control", "no-cache")
-                        self.send_header("icy-metaint", "0")
+                        self.send_header("Connection", "close")
                         self.end_headers()
-                        with open(serve_path, "rb") as fp:
+                        with open(cached_path2, "rb") as f2:
                             while True:
-                                chunk = fp.read(65536)
-                                if not chunk:
-                                    # No data yet — check if download finished
-                                    if os.path.exists(done_path):
-                                        break  # Download complete, done
-                                    time.sleep(0.1)
-                                    continue
-                                size_hdr = ("%x\r\n" % len(chunk)).encode()
-                                self.wfile.write(size_hdr)
-                                self.wfile.write(chunk)
-                                self.wfile.write(b"\r\n")
-                        self.wfile.write(b"0\r\n\r\n")
-                        logging.info("Progressive serve complete for %s", vid)
+                                chunk2 = f2.read(65536)
+                                if not chunk2:
+                                    break
+                                self.wfile.write(chunk2)
+                        logging.info("Served %s from cache after wait", vid)
                         return
                     except (BrokenPipeError, ConnectionResetError):
                         return
                     except Exception:
-                        logging.exception("Progressive serve error for %s", vid)
-                self.send_header("icy-metaint", "0")  # fallback
+                        logging.exception("Cached stream error for %s", vid)
+                self.send_header("icy-metaint", "0")
                 self.end_headers()
                 try:
                     for chunk in stream_audio(vid):
