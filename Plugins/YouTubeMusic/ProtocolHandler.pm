@@ -181,6 +181,19 @@ sub _prefetch_with_client {
     return unless $next_vid;
     $log->info("Prefetching next track: $next_vid");
     Plugins::YouTubeMusic::API->prefetch($next_vid, sub {});
+    # Also prefetch 2 tracks ahead for smoother progressive serving
+    my $next2_index = $next_index + 1;
+    if ($next2_index < $count) {
+        my $next2_track = eval { Slim::Player::Playlist::track($client, $next2_index) };
+        if ($next2_track) {
+            my $next2_url = eval { $next2_track->url } // '';
+            my ($next2_vid) = $next2_url =~ m{^ytm://([A-Za-z0-9_\-]+)};
+            if ($next2_vid) {
+                $log->info("Prefetching 2 ahead: $next2_vid");
+                Plugins::YouTubeMusic::API->prefetch($next2_vid, sub {});
+            }
+        }
+    }
 }
 
 sub _prefetch_next_track {
