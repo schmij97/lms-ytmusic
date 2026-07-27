@@ -959,7 +959,6 @@ def stream_audio(video_id):
     url = f"https://music.youtube.com/watch?v={video_id}"
 
     ytdlp_cmd = [
-        "nice", "-n", "10",
         ytdlp,
         "--no-playlist",
         "--quiet",
@@ -977,7 +976,6 @@ def stream_audio(video_id):
     ]
 
     ffmpeg_cmd = [
-        "nice", "-n", "10",
         "ffmpeg",
         "-loglevel", "error",
         "-i", "pipe:0",
