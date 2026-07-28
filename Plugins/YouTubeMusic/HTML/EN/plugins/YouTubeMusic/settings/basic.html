@@ -85,6 +85,39 @@
     </div>
     <div style="margin-top:4px;">
       <button type="button" onclick="addPlaylistRow()">+ Add Playlist</button>
+      <div style="margin-top:10px;padding:8px;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;">
+        <strong>Add from URL:</strong>
+        <input type="text" id="ytmUrlInput" style="width:400px;margin:0 6px;" placeholder="Paste YouTube Music playlist URL..." />
+        <button type="button" onclick="addFromUrl()">Add</button>
+        <span id="ytmUrlStatus" style="margin-left:8px;font-size:0.85em;"></span>
+      </div>
+      <script>
+      function addFromUrl() {
+          var url = document.getElementById('ytmUrlInput').value.trim();
+          var status = document.getElementById('ytmUrlStatus');
+          var match = url.match(/[?&]list=([A-Za-z0-9_\-]+)/);
+          if (!match) {
+              status.textContent = 'Could not find playlist ID in URL';
+              status.style.color = 'red';
+              return;
+          }
+          var listId = match[1];
+          var browseId = listId.startsWith('VL') ? listId : 'VL' + listId;
+          var name = prompt('Enter a name for this playlist:', 'My Playlist');
+          if (!name) return;
+          var div = document.createElement('div');
+          div.className = 'playlistRow';
+          div.style.marginBottom = '4px';
+          div.innerHTML = '<input type="text" name="playlist_name" style="width:180px;" value="' + name + '" placeholder="Playlist name" />'
+                        + ' <input type="text" name="playlist_id" style="width:360px;font-family:monospace;font-size:0.85em;" value="' + browseId + '" placeholder="VLRDCLAK5uy_..." />'
+                        + ' <button type="button" onclick="this.parentNode.remove()">Remove</button>';
+          document.getElementById('playlistContainer').appendChild(div);
+          document.getElementById('ytmUrlInput').value = '';
+          status.textContent = 'Added! Click Save to keep.';
+          status.style.color = 'green';
+          setTimeout(function() { status.textContent = ''; }, 3000);
+      }
+      </script>
     </div>
     <script>
     function addPlaylistRow() {
