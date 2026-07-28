@@ -148,6 +148,9 @@ sub getNextTrack {
 
     # Kick off a non-blocking metadata fetch (title/artist/artwork)
     _fetch_metadata($vid, $song);
+    # Start downloading current track NOW before LMS opens the stream
+    $log->info("EARLY PREFETCH START $vid");
+    Plugins::YouTubeMusic::API->prefetch($vid, sub {});
 
 
     # Delay prefetch check by 3s so radio addtracks completes first

@@ -775,23 +775,12 @@ def _cleanup_old_prefetch(max_age=600):
 
 def _prefetch_worker(video_id):
     tmp_path, done_path = _prefetch_paths(video_id)
-    t0 = time.time()
-    logging.warning("PREFETCH_TIMING %s started", video_id)
     try:
-        logged_first = False
-        logged_128k = False
         with open(tmp_path, "wb") as f:
             for chunk in stream_audio(video_id):
-                if not logged_first:
-                    logging.warning("PREFETCH_TIMING %s first byte after %.2fs", video_id, time.time()-t0)
-                    logged_first = True
                 f.write(chunk)
-                f.flush()
-                if not logged_128k and os.path.getsize(tmp_path) >= 131072:
-                    logging.warning("PREFETCH_TIMING %s 128KB after %.2fs", video_id, time.time()-t0)
-                    logged_128k = True
         os.replace(tmp_path, done_path)
-        logging.warning("PREFETCH_TIMING %s complete after %.2fs", video_id, time.time()-t0)
+        logging.info("Prefetch complete for %s", video_id)
     except Exception:
         logging.exception("Prefetch failed for %s", video_id)
         try:
@@ -1199,76 +1188,64 @@ class _Handler(BaseHTTPRequestHandler):
                     except Exception:
                         logging.exception("Cached stream error for %s, falling back to live", vid)
 
-                # Progressive raw streaming: no chunked encoding, raw MP3 bytes
+                self.send_response(200)
+                self.send_header("Content-Type", _AUDIO_MIME)
+                self.send_header("Transfer-Encoding", "chunked")
+                self.send_header("Cache-Control", "no-cache")
+                # Progressive serving: wait for .part file to have data,
+                # then serve it while download continues in background
                 tmp_path, done_path = _prefetch_paths(vid)
-                cached = get_prefetched_path(vid)
-                if not cached:
+                if not get_prefetched_path(vid):
                     start_prefetch(vid)
-                    # Wait up to 5 seconds for first bytes to appear
-                    for _ in range(10):  # up to 5 seconds
-                        if os.path.exists(tmp_path) and os.path.getsize(tmp_path) > 8192:
-                            break
-                        if os.path.exists(done_path):
-                            break
-                        time.sleep(0.5)
-                sz = os.path.getsize(tmp_path) if os.path.exists(tmp_path) else 0
-                logging.warning("Starting stream %s with %d bytes buffered", vid, sz)
-                open_path = done_path if os.path.exists(done_path) else tmp_path
-                if os.path.exists(open_path) and os.path.getsize(open_path) > 0:
+                # Wait up to 14 seconds for .part file to have data
+                for _ in range(1):  # TEMP: reduce prefetch wait to 0.5s
+                    if (os.path.exists(tmp_path) and os.path.getsize(tmp_path) > 65536) or os.path.exists(done_path):
+                        break
+                    time.sleep(0.5)
+                # Serve progressively from .part file
+                serve_path = None  # TEMP disable progressive .part serving
+                if os.path.exists(serve_path) and os.path.getsize(serve_path) > 0:
                     try:
                         self.send_response(200)
                         self.send_header("Content-Type", _AUDIO_MIME)
+                        self.send_header("Transfer-Encoding", "chunked")
                         self.send_header("Cache-Control", "no-cache")
-                        self.send_header("Connection", "close")
                         self.send_header("icy-metaint", "0")
                         self.end_headers()
-                        position = 0
-                        while True:
-                            current = tmp_path if os.path.exists(tmp_path) else done_path
-                            if not os.path.exists(current):
-                                if os.path.exists(done_path):
-                                    break
-                                time.sleep(0.1)
-                                continue
-                            with open(current, "rb") as fp:
-                                fp.seek(position)
+                        with open(serve_path, "rb") as fp:
+                            while True:
                                 chunk = fp.read(65536)
-                            if chunk:
+                                if not chunk:
+                                    # No data yet — check if download finished
+                                    if os.path.exists(done_path):
+                                        break  # Download complete, done
+                                    time.sleep(0.1)
+                                    continue
+                                size_hdr = ("%x\r\n" % len(chunk)).encode()
+                                self.wfile.write(size_hdr)
                                 self.wfile.write(chunk)
-                                self.wfile.flush()
-                                position += len(chunk)
-                                continue
-                            if os.path.exists(done_path):
-                                break
-                            time.sleep(0.1)
-                        logging.info("Progressive raw stream complete for %s", vid)
+                                self.wfile.write(b"\r\n")
+                        self.wfile.write(b"0\r\n\r\n")
+                        logging.info("Progressive serve complete for %s", vid)
                         return
                     except (BrokenPipeError, ConnectionResetError):
                         return
                     except Exception:
-                        logging.exception("Progressive stream error for %s", vid)
-                # Fallback: live stream if progressive failed
-                # Fallback: live stream if cache failed
-                # Fallback: live stream if cache failed
-                # Fallback: live stream if cache failed
+                        logging.exception("Progressive serve error for %s", vid)
+                self.send_header("icy-metaint", "0")  # fallback
+                self.end_headers()
                 try:
-                    self.send_response(200)
-                    self.send_header("Content-Type", _AUDIO_MIME)
-                    self.send_header("Transfer-Encoding", "chunked")
-                    self.send_header("Cache-Control", "no-cache")
-                    self.send_header("icy-metaint", "0")
-                    self.end_headers()
                     for chunk in stream_audio(vid):
                         size_hdr = ("%x\r\n" % len(chunk)).encode()
                         self.wfile.write(size_hdr)
                         self.wfile.write(chunk)
                         self.wfile.write(b"\r\n")
                     self.wfile.write(b"0\r\n\r\n")
-                    logging.info("Served %s via live stream fallback", vid)
                 except (BrokenPipeError, ConnectionResetError):
-                    return
+                    logging.info("Client disconnected during stream for %s", vid)
                 except Exception:
                     logging.exception("Stream error for %s", vid)
+
             elif path.startswith("/prefetch/"):
                 vid = path[len("/prefetch/"):]
                 if not vid:
