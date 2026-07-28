@@ -53,9 +53,9 @@ sudo pip3 install yt-dlp --break-system-packages
 ```
 ### piCorePlayer notes
 
-- Install `pcp-ffmpeg.tcz` from the pCP extension manager — **not** `ffmpeg.tcz` (the standard one lacks MP3 support and won't work)
-- The plugin will automatically detect available codecs and fall back to AAC if MP3 is unavailable
-- yt-dlp should be installed via pip: `pip3 install yt-dlp`
+- Install `pcp-ffmpeg.tcz` from the pCP extension manager — **not** `ffmpeg.tcz` which does not work on pCP at all
+- `pcp-ffmpeg.tcz` lacks libmp3lame (MP3 encoding support), so the plugin automatically falls back to FLAC
+- yt-dlp must be installed via the **Download yt-dlp** button in Settings → Advanced → YouTube Music (persists in LMS cache across reboots)
 
 > **Tip:** Once installed, you can update yt-dlp at any time from **Settings → Advanced → YouTube Music → Update yt-dlp** without needing command line access.
 
@@ -119,6 +119,19 @@ and restart LMS again.
 In LMS, go to **Settings → Advanced → YouTube Music** to change the local
 proxy port (default `9876`) if it conflicts with something else on your
 system.
+
+## My Playlists
+
+You can save YouTube Music playlists so they always appear in the **My Playlists** menu.
+
+**To find a playlist's BrowseID:**
+1. Open [music.youtube.com](https://music.youtube.com) in a browser
+2. Navigate to the playlist you want to add
+3. Copy the URL — it looks like `https://music.youtube.com/playlist?list=PLxxxxxxxxxx`
+4. Take the part after `list=` and add `VL` to the front — so `PLxxxxxxxxxx` becomes `VLPLxxxxxxxxxx`
+
+**In LMS Settings → Advanced → YouTube Music**, enter one playlist per line in the format:
+> **Note:** Playlists must be set to **Public** or **Unlisted (Hidden)** on YouTube Music — Private playlists cannot be accessed via the API.
 
 ## Troubleshooting
 
