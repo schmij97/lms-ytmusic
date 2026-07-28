@@ -124,13 +124,14 @@ system.
 
 You can save YouTube Music playlists so they always appear in the **My Playlists** menu.
 
-**To find a playlist's BrowseID:**
+**To add a playlist using the URL helper (easiest):**
 1. Open [music.youtube.com](https://music.youtube.com) in a browser
 2. Navigate to the playlist you want to add
-3. Copy the URL — it looks like `https://music.youtube.com/playlist?list=PLxxxxxxxxxx`
-4. Take the part after `list=` and add `VL` to the front — so `PLxxxxxxxxxx` becomes `VLPLxxxxxxxxxx`
+3. Copy the URL from the address bar
+4. In LMS **Settings → Advanced → YouTube Music**, paste the URL into the **Add from URL** field and click **Add** — the BrowseID is extracted automatically
 
-**In LMS Settings → Advanced → YouTube Music**, enter one playlist per line in the format:
+**To add manually**, enter one per line as: Playlist Name|VLPLxxxxxxxxxx
+
 > **Note:** Playlists must be set to **Public** or **Unlisted (Hidden)** on YouTube Music — Private playlists cannot be accessed via the API.
 
 ## Troubleshooting
