@@ -1063,6 +1063,48 @@ class _Handler(BaseHTTPRequestHandler):
         try:
             if path == "/ping":
                 self._send_json({"status": "ok"})
+            elif path == "/globalsearch":
+                q = p("q")
+                t = p("type", "songs")
+                if not q:
+                    return self._error("Missing q parameter", 400)
+                results = search(q, t)
+                # Wrap in OPML format for LMS XMLBrowser
+                items = []
+                for r in results:
+                    if r.get("type") == "song" and r.get("videoId"):
+                        items.append({
+                            "title": r.get("title", ""),
+                            "line1": r.get("title", ""),
+                            "line2": r.get("artist", ""),
+                            "image": r.get("thumbnail", ""),
+                            "url": "ytm://" + r["videoId"],
+                            "play": "ytm://" + r["videoId"],
+                            "type": "audio",
+                            "on_select": "play",
+                        })
+                    elif r.get("type") == "album" and r.get("browseId"):
+                        items.append({
+                            "title": r.get("title", ""),
+                            "line1": r.get("title", ""),
+                            "line2": r.get("artist", ""),
+                            "image": r.get("thumbnail", ""),
+                            "url": "ytmplaylist://" + r["browseId"],
+                            "type": "playlist",
+                        })
+                    elif r.get("type") == "artist" and r.get("browseId"):
+                        items.append({
+                            "title": r.get("name", r.get("title", "")),
+                            "image": r.get("thumbnail", ""),
+                            "url": "ytmplaylist://" + r["browseId"],
+                        })
+                    elif r.get("type") == "playlist" and r.get("browseId"):
+                        items.append({
+                            "title": r.get("title", ""),
+                            "image": r.get("thumbnail", ""),
+                            "url": "ytmplaylist://" + r["browseId"],
+                        })
+                self._send_json({"title": "YouTube Music", "items": items})
             elif path == "/ytdlp_status":
                 ytdlp_path = _find_ytdlp()
                 if ytdlp_path:

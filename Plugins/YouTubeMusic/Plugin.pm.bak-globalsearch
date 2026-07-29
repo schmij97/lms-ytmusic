@@ -163,34 +163,11 @@ sub postinitPlugin {
         $log->info("youtube:// already handled by another plugin, skipping shim");
     }
 
-    # Register global search provider (closures capture query+type)
-    Slim::Menu::GlobalSearch->registerInfoProvider( 'YouTube' => (
-            after         => 'top',
-            remote_search => 1,
-            func          => sub {
-                    my ( $client, $tags ) = @_;
-                    my $q = $tags->{search} || '';
-                    my $make = sub {
-                            my ($type, $stringid) = @_;
-                            return {
-                                    name => cstring($client, $stringid),
-                                    url  => sub {
-                                            my ($client, $callback, $params) = @_;
-                                            _globalSearch($client, $callback, { search => $q, type => $type });
-                                    },
-                            };
-                    };
-                    return {
-                            name  => 'YouTube',
-                            items => [
-                                    $make->('songs',     'PLUGIN_YOUTUBEMUSIC_SONGS'),
-                                    $make->('albums',    'PLUGIN_YOUTUBEMUSIC_ALBUMS'),
-                                    $make->('artists',   'PLUGIN_YOUTUBEMUSIC_ARTISTS'),
-                                    $make->('playlists', 'PLUGIN_YOUTUBEMUSIC_PLAYLISTS'),
-                            ],
-                    };
-            },
-    ) );
+    # Register global search provider so YouTube Music appears in Material's global search
+    Slim::Menu::GlobalSearch->registerSearchProviders([{
+            text => 'YouTube',
+            url  => \&_globalSearch,
+        }]);
     $log->info("Registered YouTube Music global search provider");
 
     # Subscribe to player stop events so we can trigger radio
@@ -203,26 +180,15 @@ sub postinitPlugin {
 
 
 sub _globalSearch {
-    my ( $client, $callback, $params ) = @_;
-    $params = {} unless ref($params) eq 'HASH';
-
-    my $query = $params->{search} || $params->{searchTerm} || $params->{q} || $params->{query} || '';
-    my $type  = $params->{type} || 'all';
-
-    $log->error("YTM GlobalSearch query='$query' type='$type'");
-
-    if (!$query) {
-        $callback->({ items => [{ name => 'DEBUG: empty search term', type => 'text' }] });
-        return;
-    }
-
-    Plugins::YouTubeMusic::API->search($query, $type, sub {
-        my $results = shift || [];
-        my $items = eval { _items_to_menu($client, $results) } || [];
-        $log->error("YTM GlobalSearch items=" . scalar(@$items));
-        $callback->({ items => $items });
+    my ($client, $callback, $params) = @_;
+    my $query = $params->{search} || '';
+    $log->info("Global search for: $query");
+    Plugins::YouTubeMusic::API->search($query, 'all', sub {
+        my $results = shift;
+        $callback->({ items => _items_to_menu($client, $results) });
     });
 }
+
 sub _on_playlist_stop {
     my $request = shift;
     my $client  = $request->client() or return;
