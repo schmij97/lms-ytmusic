@@ -59,6 +59,18 @@ sudo pip3 install yt-dlp --break-system-packages
 
 > **Tip:** Once installed, you can update yt-dlp at any time from **Settings → Advanced → YouTube Music → Update yt-dlp** without needing command line access.
 
+### Windows notes
+
+Getting Python detected correctly by LMS on Windows requires installing Python system-wide rather than per-user. When running the Python installer:
+
+1. On the first screen, tick **"Add Python to PATH"** and click **"Customize installation"**
+2. On the next screen, select **"py launcher"** and **"for all users"**, then click Next
+3. On the advanced options screen, select **"Install Python for all users"** — this installs to `C:\Program Files\Python3xx` instead of the per-user AppData folder, which LMS can reliably detect. Also ensure **"Add Python to environment variables"** is checked
+
+After installation, verify in a CMD terminal (Run as Administrator) that both `py.exe --version` and `python.exe --version` return the same Python version. Then restart LMS and use the **Download yt-dlp** button in **Settings → Advanced → YouTube Music**.
+
+> **Note:** If the Download button shows a "Failed to fetch" error, manually download `yt-dlp.exe` from the [yt-dlp releases page](https://github.com/yt-dlp/yt-dlp/releases) and place it in `C:\ProgramData\Lyrion\Cache\InstalledPlugins\Plugins\YouTubeMusic\Bin\`
+
 ### Ubuntu/Debian notes
 
 The `apt` version of yt-dlp is severely outdated (2022). Use pipx instead:
