@@ -209,17 +209,14 @@ sub _globalSearch {
     my $query = $params->{search} || $params->{searchTerm} || $params->{q} || $params->{query} || '';
     my $type  = $params->{type} || 'all';
 
-    $log->error("YTM GlobalSearch query='$query' type='$type'");
-
     if (!$query) {
-        $callback->({ items => [{ name => 'DEBUG: empty search term', type => 'text' }] });
+        $callback->({ items => [] });
         return;
     }
 
     Plugins::YouTubeMusic::API->search($query, $type, sub {
         my $results = shift || [];
         my $items = eval { _items_to_menu($client, $results) } || [];
-        $log->error("YTM GlobalSearch items=" . scalar(@$items));
         $callback->({ items => $items });
     });
 }
