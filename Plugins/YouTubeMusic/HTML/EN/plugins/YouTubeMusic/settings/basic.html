@@ -60,6 +60,54 @@
     </script>
   [% END %]
 
+  [% WRAPPER setting title="ffmpeg (Windows only)" desc="ffmpeg is required for audio encoding on Windows. Click Download to install it automatically. On Linux/Mac, install ffmpeg via your package manager." %]
+    <span id="ffmpegInstalled" style="margin-right:10px;font-weight:bold;"></span>
+    <button type="button" id="ffmpegDownloadBtn" onclick="downloadFfmpeg()">Download ffmpeg</button>
+    <span id="ffmpegStatus" style="margin-left:10px;"></span>
+    <script>
+    (function() {
+        fetch('http://' + window.location.hostname + ':9876/ffmpeg_status')
+            .then(r => r.json())
+            .then(d => {
+                var el = document.getElementById('ffmpegInstalled');
+                if (d.installed) {
+                    el.textContent = '[OK] ffmpeg ' + d.version + ' installed';
+                    el.style.color = 'green';
+                } else {
+                    el.textContent = '[NOT INSTALLED] ffmpeg not found';
+                    el.style.color = 'red';
+                }
+            })
+            .catch(function() {
+                var el = document.getElementById('ffmpegInstalled');
+                el.textContent = '? status unknown';
+                el.style.color = 'orange';
+            });
+    })();
+    function downloadFfmpeg() {
+        var btn = document.getElementById('ffmpegDownloadBtn');
+        var status = document.getElementById('ffmpegStatus');
+        btn.disabled = true;
+        status.textContent = 'Downloading ffmpeg... (may take a few minutes)';
+        fetch('http://' + window.location.hostname + ':9876/download_ffmpeg')
+            .then(r => r.json())
+            .then(d => {
+                if (d.status === 'ok') {
+                    status.textContent = 'Done! ffmpeg installed.';
+                    document.getElementById('ffmpegInstalled').textContent = '[OK] ffmpeg installed';
+                    document.getElementById('ffmpegInstalled').style.color = 'green';
+                } else {
+                    status.textContent = 'Error: ' + d.message;
+                }
+                btn.disabled = false;
+            })
+            .catch(e => {
+                status.textContent = 'Error: ' + e;
+                btn.disabled = false;
+            });
+    }
+    </script>
+  [% END %]
   [% WRAPPER setting title="PLUGIN_YOUTUBEMUSIC_PROXY_PORT" desc="PLUGIN_YOUTUBEMUSIC_PROXY_PORT_DESC" %]
     <input type="number" name="pref_proxy_port"
            id="ytm_proxy_port"

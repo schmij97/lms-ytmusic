@@ -954,6 +954,40 @@ def download_ytdlp():
         return False, str(e)
 
 
+def download_ffmpeg():
+    """Download ffmpeg binary into BIN_DIR. Returns (ok, message)."""
+    if os.name != "nt":
+        return False, "ffmpeg download only supported on Windows — use your package manager on Linux/Mac"
+    try:
+        import urllib.request, zipfile, io
+        os.makedirs(BIN_DIR, exist_ok=True)
+        api_url = "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest"
+        with urllib.request.urlopen(api_url, timeout=15) as resp:
+            release = json.loads(resp.read())
+        # Find the win64 essentials build
+        dl_url = None
+        for asset in release["assets"]:
+            if "win64" in asset["name"] and "essentials" in asset["name"] and asset["name"].endswith(".zip"):
+                dl_url = asset["browser_download_url"]
+                break
+        if not dl_url:
+            return False, "Could not find ffmpeg Windows build"
+        logging.info("Downloading ffmpeg from %s", dl_url)
+        with urllib.request.urlopen(dl_url, timeout=300) as resp:
+            data = resp.read()
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            # Find ffmpeg.exe in the zip
+            ffmpeg_entry = next((n for n in zf.namelist() if n.endswith("/bin/ffmpeg.exe")), None)
+            if not ffmpeg_entry:
+                return False, "ffmpeg.exe not found in zip"
+            with zf.open(ffmpeg_entry) as src, open(os.path.join(BIN_DIR, "ffmpeg.exe"), "wb") as dst:
+                dst.write(src.read())
+        logging.info("ffmpeg installed to %s", BIN_DIR)
+        return True, "ok"
+    except Exception as e:
+        logging.exception("Failed to download ffmpeg")
+        return False, str(e)
+
 def _find_ytdlp():
     # Check plugin directory first (no sudo needed, always found)
     if os.path.isfile(YTDLP_BIN) and os.access(YTDLP_BIN, os.X_OK):
@@ -1151,6 +1185,24 @@ class _Handler(BaseHTTPRequestHandler):
                     self._send_json({"status": "ok", "version": msg})
                 else:
                     self._send_json({"status": "error", "message": msg})
+            elif path == "/download_ffmpeg":
+                ok, msg = download_ffmpeg()
+                if ok:
+                    self._send_json({"status": "ok", "version": msg})
+                else:
+                    self._send_json({"status": "error", "message": msg})
+            elif path == "/ffmpeg_status":
+                import shutil as _shutil
+                ffmpeg = _shutil.which("ffmpeg") or os.path.join(BIN_DIR, "ffmpeg.exe" if os.name == "nt" else "ffmpeg")
+                if os.path.isfile(ffmpeg):
+                    try:
+                        ver = subprocess.run([ffmpeg, "-version"], capture_output=True, text=True, timeout=5)
+                        version = ver.stdout.split("\n")[0].split("version ")[1].split(" ")[0] if "version" in ver.stdout else "unknown"
+                        self._send_json({"installed": True, "version": version, "path": ffmpeg})
+                    except Exception:
+                        self._send_json({"installed": True, "version": "unknown", "path": ffmpeg})
+                else:
+                    self._send_json({"installed": False, "version": None, "path": None})
             elif path == "/update_ytdlp":
                 try:
                     ytdlp = _find_ytdlp()
