@@ -964,10 +964,11 @@ def download_ffmpeg():
         api_url = "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest"
         with urllib.request.urlopen(api_url, timeout=15) as resp:
             release = json.loads(resp.read())
-        # Find the win64 essentials build
+        # Find the win64 gpl build (non-shared, smallest)
         dl_url = None
         for asset in release["assets"]:
-            if "win64" in asset["name"] and "essentials" in asset["name"] and asset["name"].endswith(".zip"):
+            name = asset["name"]
+            if "win64" in name and "gpl.zip" in name and "shared" not in name:
                 dl_url = asset["browser_download_url"]
                 break
         if not dl_url:
@@ -977,7 +978,7 @@ def download_ffmpeg():
             data = resp.read()
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
             # Find ffmpeg.exe in the zip
-            ffmpeg_entry = next((n for n in zf.namelist() if n.endswith("/bin/ffmpeg.exe")), None)
+            ffmpeg_entry = next((n for n in zf.namelist() if n.endswith("/ffmpeg.exe") or n.endswith("/bin/ffmpeg.exe")), None)
             if not ffmpeg_entry:
                 return False, "ffmpeg.exe not found in zip"
             with zf.open(ffmpeg_entry) as src, open(os.path.join(BIN_DIR, "ffmpeg.exe"), "wb") as dst:
