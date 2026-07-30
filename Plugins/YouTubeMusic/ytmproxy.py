@@ -958,7 +958,13 @@ def _find_ytdlp():
         if p:
             return p
     return None
+def _ensure_bin_in_path():
+    """On Windows, add the plugin Bin directory to PATH so ffmpeg can be found."""
+    if os.name == "nt" and BIN_DIR not in os.environ.get("PATH", ""):
+        os.environ["PATH"] = BIN_DIR + os.pathsep + os.environ.get("PATH", "")
+
 def stream_audio(video_id):
+    _ensure_bin_in_path()
     """
     Yield MP3 audio bytes for the given video ID by piping yt-dlp's stdout
     directly into ffmpeg, avoiding any temp files. ffmpeg re-muxes into a
@@ -982,7 +988,7 @@ def stream_audio(video_id):
         "--extractor-retries", "2",
         "--no-part",
         "-f", "bestaudio[ext=m4a]/bestaudio[ext=mp3]/bestaudio",
-        "--js-runtimes", "nodejs",
+        "--js-runtimes", "node" if os.name == "nt" else "nodejs",
         "--add-header", "User-Agent:com.google.android.youtube/17.29.34",
         "-o", "-",
         url,

@@ -4,14 +4,14 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.49" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.50" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Windows fix: look for yt-dlp.exe instead of yt-dlp on Windows — fixes yt-dlp not being found when running as SYSTEM service account.</changes>
+      <changes lang="EN">Windows fixes: add Bin directory to PATH so ffmpeg is found by subprocesses when running as SYSTEM account; use correct nodejs runtime name on Windows.</changes>
       <creator>schmij97</creator>
       <category>musicservices</category>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.49/YouTubeMusic-1.3.49.zip</url>
-      <sha>2c5098f8ee025eb0ee8f7bd5b9039127c0eb2ba5</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.50/YouTubeMusic-1.3.50.zip</url>
+      <sha>86af41c9581de9c116428a79d281b4ad881d4f58</sha>
     </plugin>
   </plugins>
 </extensions>
