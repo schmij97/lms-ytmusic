@@ -72,8 +72,13 @@ sub shutdownPlugin {
     my $class = shift;
     if ($PROXY_PID) {
         $log->info("Stopping YouTube Music proxy (PID $PROXY_PID)");
-        eval { kill SIGTERM, $PROXY_PID };
-        waitpid($PROXY_PID, 0);
+        if ($^O eq 'MSWin32') {
+            # On Windows, use taskkill to terminate the process tree
+            system("taskkill /F /T /PID $PROXY_PID >nul 2>&1");
+        } else {
+            eval { kill SIGTERM, $PROXY_PID };
+            waitpid($PROXY_PID, 0);
+        }
         $PROXY_PID = undef;
     }
 }
@@ -136,6 +141,7 @@ sub _find_python {
     for my $py (@candidates) {
         my $null = $is_windows ? '2>nul' : '2>/dev/null';
         my $path = `$finder $py $null`; chomp $path;
+        next unless defined $path && $path ne '';
         # "where" may return multiple lines — take the first
         $path = (split /\n/, $path)[0] if $is_windows;
         $path =~ s/\r//g;  # strip carriage returns on any platform

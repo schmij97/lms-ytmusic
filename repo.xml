@@ -4,14 +4,14 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.43" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.44" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Clean up debug logging from global search implementation.</changes>
+      <changes lang="EN">Windows fixes: suppress uninitialized value warning in Python detection, use taskkill to properly terminate proxy process on shutdown (prevents port 9000 being held after LMS restart).</changes>
       <creator>schmij97</creator>
       <category>musicservices</category>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.43/YouTubeMusic-1.3.43.zip</url>
-      <sha>fff2218fa8ec783dbed523bcbaf01b4c5ace0388</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.44/YouTubeMusic-1.3.44.zip</url>
+      <sha>fe082cec20e84d2a41f488f412e31b4a4cec8bd6</sha>
     </plugin>
   </plugins>
 </extensions>
