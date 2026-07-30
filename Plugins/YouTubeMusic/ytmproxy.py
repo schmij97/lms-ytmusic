@@ -837,7 +837,8 @@ def get_prefetched_path(video_id):
 # LMS automatically adds <plugin>/Bin to PATH so it will be found system-wide
 PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
 BIN_DIR    = os.path.join(PLUGIN_DIR, "Bin")
-YTDLP_BIN  = os.path.join(BIN_DIR, "yt-dlp")
+_ytdlp_exe = "yt-dlp.exe" if os.name == "nt" else "yt-dlp"
+YTDLP_BIN  = os.path.join(BIN_DIR, _ytdlp_exe)
 
 def _platform_ytdlp_asset():
     """Return the yt-dlp GitHub asset name for the current platform."""
