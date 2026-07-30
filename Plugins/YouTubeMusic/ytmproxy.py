@@ -36,6 +36,7 @@ _HEADERS = {
 }
 
 import time
+import tempfile
 import os
 import threading
 
@@ -734,7 +735,7 @@ def _detect_audio_codec():
 
 _AUDIO_CODEC, _AUDIO_FORMAT, _AUDIO_MIME = _detect_audio_codec()
 
-PREFETCH_DIR = "/tmp/ytmproxy_prefetch"
+PREFETCH_DIR = os.path.join(tempfile.gettempdir(), "ytmproxy_prefetch")
 _prefetch_started = set()
 _prefetch_lock = threading.Lock()
 
