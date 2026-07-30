@@ -4,14 +4,14 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.45" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.46" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Windows: improved Python detection — skips WindowsApps stub entries from "where" command, and falls back to checking common per-user install paths (AppData\Local\Programs\Python) when system-wide Python is not found.</changes>
+      <changes lang="EN">Windows: improved Python detection — checks per-user AppData paths across multiple drive letters (C, D, E) to handle non-standard Python install locations.</changes>
       <creator>schmij97</creator>
       <category>musicservices</category>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.45/YouTubeMusic-1.3.45.zip</url>
-      <sha>89df37fd23d8cbb999b704d4bc46e1248945a9bf</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.46/YouTubeMusic-1.3.46.zip</url>
+      <sha>6a762393cfa3e4ab9ac0b6e57ed272b8723a0c0d</sha>
     </plugin>
   </plugins>
 </extensions>

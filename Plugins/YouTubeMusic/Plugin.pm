@@ -154,12 +154,21 @@ sub _find_python {
         $path =~ s/^"(.*)"$/$1/;  # strip surrounding quotes if any
         return $path if -e $path;
     }
-    # Last resort: check common Windows per-user install paths
+    # Last resort: check common Windows per-user install paths on all drives
     if ($is_windows) {
-        my $appdata = $ENV{LOCALAPPDATA} || '';
-        for my $ver (qw(313 312 311 310 39 38)) {
-            my $p = "$appdata\\Programs\\Python\\Python$ver\\python.exe";
-            return $p if -e $p;
+        my @appdatas = ();
+        push @appdatas, $ENV{LOCALAPPDATA} if $ENV{LOCALAPPDATA};
+        push @appdatas, $ENV{APPDATA} if $ENV{APPDATA};
+        # Also check all drive letters
+        for my $drive ('C', 'D', 'E') {
+            push @appdatas, "$drive:\\Users\\$ENV{USERNAME}\\AppData\\Local" if $ENV{USERNAME};
+        }
+        for my $appdata (@appdatas) {
+            for my $ver (qw(313 312 311 310 39 38)) {
+                my $p = "$appdata\\Programs\\Python\\Python$ver\\python.exe";
+                $log->info("Checking Python path: $p");
+                return $p if -e $p;
+            }
         }
     }
     return undef;
