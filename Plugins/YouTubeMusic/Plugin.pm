@@ -142,13 +142,25 @@ sub _find_python {
         my $null = $is_windows ? '2>nul' : '2>/dev/null';
         my $path = `$finder $py $null`; chomp $path;
         next unless defined $path && $path ne '';
-        # "where" may return multiple lines — take the first
-        $path = (split /\n/, $path)[0] if $is_windows;
+        # "where" may return multiple lines — skip WindowsApps stub
+        if ($is_windows) {
+            my @paths = split /\n/, $path;
+            my ($real) = grep { !/WindowsApps/i } @paths;
+            $path = $real || $paths[0] || '';
+        }
         $path =~ s/\r//g;  # strip carriage returns on any platform
         next unless $path;
         # On Windows, also try without -e check since path may have quotes
         $path =~ s/^"(.*)"$/$1/;  # strip surrounding quotes if any
         return $path if -e $path;
+    }
+    # Last resort: check common Windows per-user install paths
+    if ($is_windows) {
+        my $appdata = $ENV{LOCALAPPDATA} || '';
+        for my $ver (qw(313 312 311 310 39 38)) {
+            my $p = "$appdata\\Programs\\Python\\Python$ver\\python.exe";
+            return $p if -e $p;
+        }
     }
     return undef;
 }
