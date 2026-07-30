@@ -154,20 +154,43 @@ sub _find_python {
         $path =~ s/^"(.*)"$/$1/;  # strip surrounding quotes if any
         return $path if -e $path;
     }
-    # Last resort: check common Windows per-user install paths on all drives
+    # Last resort on Windows: check registry and common install paths
     if ($is_windows) {
-        my @appdatas = ();
-        push @appdatas, $ENV{LOCALAPPDATA} if $ENV{LOCALAPPDATA};
-        push @appdatas, $ENV{APPDATA} if $ENV{APPDATA};
-        # Also check all drive letters
-        for my $drive ('C', 'D', 'E') {
-            push @appdatas, "$drive:\\Users\\$ENV{USERNAME}\\AppData\\Local" if $ENV{USERNAME};
-        }
-        for my $appdata (@appdatas) {
+        # Try registry first (works for all accounts including SYSTEM)
+        eval {
+            require Win32::TieRegistry;
+            Win32::TieRegistry->import(Delimiter => "/");
+            for my $ver (qw(3.13 3.12 3.11 3.10 3.9 3.8)) {
+                my $key = "HKEY_LOCAL_MACHINE/SOFTWARE/Python/PythonCore/$ver/InstallPath//";
+                my $p = $Win32::TieRegistry::Registry->{$key};
+                if ($p) {
+                    $p =~ s/\\$//;
+                    $p .= "\\python.exe";
+                    return $p if -e $p;
+                }
+            }
+        };
+        # Also scan all drives and all users
+        for my $drive ('C', 'D', 'E', 'F') {
+            # System-wide install
             for my $ver (qw(313 312 311 310 39 38)) {
-                my $p = "$appdata\\Programs\\Python\\Python$ver\\python.exe";
-                $log->info("Checking Python path: $p");
+                my $p = "$drive:\\Program Files\\Python$ver\\python.exe";
                 return $p if -e $p;
+                $p = "$drive:\\Program Files (x86)\\Python$ver\\python.exe";
+                return $p if -e $p;
+            }
+            # Per-user installs - scan all user profiles
+            for my $users_dir ("$drive:\\Users") {
+                next unless -d $users_dir;
+                opendir(my $dh, $users_dir) or next;
+                my @users = grep { !/^\./ } readdir($dh);
+                closedir($dh);
+                for my $user (@users) {
+                    for my $ver (qw(313 312 311 310 39 38)) {
+                        my $p = "$users_dir\\$user\\AppData\\Local\\Programs\\Python\\Python$ver\\python.exe";
+                        return $p if -e $p;
+                    }
+                }
             }
         }
     }
