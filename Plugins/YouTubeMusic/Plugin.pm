@@ -197,6 +197,37 @@ sub _find_python {
     return undef;
 }
 
+sub _register_proxy_handlers {
+    for my $ep (qw(ytdlp_status ffmpeg_status codec ping)) {
+        my $endpoint = $ep;
+        Slim::Web::Pages->addRawFunction(
+            "plugins/YouTubeMusic/proxy/$endpoint",
+            sub {
+                my ($httpClient, $response) = @_;
+                my $port = $prefs->get('proxy_port') || 9876;
+                Slim::Networking::SimpleAsyncHTTP->new(
+                    sub {
+                        my $http = shift;
+                        $response->code(200);
+                        $response->header('Content-Type', 'application/json');
+                        $response->header('Access-Control-Allow-Origin', '*');
+                        $response->content($http->content);
+                        $httpClient->send_response($response);
+                        Slim::Web::HTTP::closeHTTPSocket($httpClient);
+                    },
+                    sub {
+                        $response->code(500);
+                        $response->content('{"error":"proxy failed"}');
+                        $httpClient->send_response($response);
+                        Slim::Web::HTTP::closeHTTPSocket($httpClient);
+                    },
+                    { timeout => 35 }
+                )->get("http://127.0.0.1:$port/$endpoint");
+            }
+        );
+    }
+}
+
 sub postinitPlugin {
     my $class = shift;
     # Register youtube:// scheme only if nothing else has claimed it yet.
@@ -242,6 +273,7 @@ sub postinitPlugin {
             },
     ) );
     $log->info("Registered YouTube Music global search provider");
+    _register_proxy_handlers();
 
     # Subscribe to player stop events so we can trigger radio
     # when the queue empties and the player stops naturally

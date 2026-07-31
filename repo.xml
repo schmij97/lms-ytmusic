@@ -4,14 +4,14 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.57" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.58" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Autoplay toggle fixed — player now stops cleanly after queue ends when autoplay is disabled. ARM/Pi: yt-dlp version check timeout increased to 30s. Update button now re-downloads wheel correctly.</changes>
+      <changes lang="EN">Fix settings page on Android — status endpoints (yt-dlp, ffmpeg) now proxied through LMS port 9000 to avoid CORS issues on mobile browsers. Download and Update buttons still use direct port 9876.</changes>
       <creator>schmij97</creator>
       <category>musicservices</category>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.57/YouTubeMusic-1.3.57.zip</url>
-      <sha>740c1ffbe524c810302c6672c85bb8beb8fae7bf</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.58/YouTubeMusic-1.3.58.zip</url>
+      <sha>d522089bec9dbe6af9bc53da474474824da917e5</sha>
     </plugin>
   </plugins>
 </extensions>
