@@ -887,25 +887,30 @@ def download_ytdlp():
             wrapper = os.path.join(BIN_DIR, "yt-dlp")
             # Check if yt-dlp is already installed system-wide
             system_ytdlp = shutil.which("yt-dlp") or shutil.which("yt_dlp")
-            if system_ytdlp and os.path.abspath(system_ytdlp) != os.path.abspath(wrapper):
-                with open(wrapper, "w") as f:
-                    f.write(f"#!/bin/sh\nexec {system_ytdlp} \"$@\"\n")
-                os.chmod(wrapper, 0o755)
-                return True, version
-            # Fall back to pip install
-            result = subprocess.run(
-                [sys.executable, "-m", "pip", "install", "yt-dlp",
-                 "--upgrade", "--break-system-packages", "-q"],
-                capture_output=True, text=True, timeout=120
-            )
-            if result.returncode == 0:
-                system_ytdlp = shutil.which("yt-dlp")
-                if system_ytdlp:
-                    with open(wrapper, "w") as f:
-                        f.write(f"#!/bin/sh\nexec {system_ytdlp} \"$@\"\n")
-                    os.chmod(wrapper, 0o755)
-                return True, version
-            return False, result.stderr.strip() or "pip install failed"
+            # Always download wheel for ARM so it can be updated later
+            # Download wheel and install to BIN_DIR
+            logging.info("Downloading yt-dlp wheel for this platform")
+            wheel_url = None
+            for asset in release["assets"]:
+                if asset["name"].endswith(".whl"):
+                    wheel_url = asset["browser_download_url"]
+                    break
+            if not wheel_url:
+                # Try PyPI
+                # Convert tag format (2026.07.04) to PyPI format (2026.7.4)
+                pypi_ver = ".".join(str(int(x)) for x in version.split("."))
+                wheel_url = f"https://files.pythonhosted.org/packages/py3/y/yt-dlp/yt_dlp-{pypi_ver}-py3-none-any.whl"
+            with urllib.request.urlopen(wheel_url, timeout=60) as resp:
+                wheel_data = resp.read()
+            import zipfile, io
+            ytdlp_pkg = os.path.join(BIN_DIR, "yt_dlp")
+            with zipfile.ZipFile(io.BytesIO(wheel_data)) as zf:
+                zf.extractall(BIN_DIR)
+            # Create wrapper script
+            with open(wrapper, "w") as f:
+                f.write(f"#!/bin/sh\nPYTHONPATH={BIN_DIR}:$PYTHONPATH exec {sys.executable} -m yt_dlp \"$@\"\n")
+            os.chmod(wrapper, 0o755)
+            return True, version
 
         # Find download URL
         dl_url = None
@@ -1166,9 +1171,8 @@ class _Handler(BaseHTTPRequestHandler):
                 if ytdlp_path:
                     import subprocess as _sp
                     try:
-                        # Try running actual yt-dlp binary first, fall back to wrapper
-                        real_ytdlp = shutil.which("yt-dlp") or ytdlp_path
-                        ver = _sp.run([real_ytdlp, "--version"], capture_output=True, text=True, timeout=30)
+                        ver = _sp.run([ytdlp_path, "--version"], capture_output=True, text=True, timeout=30,
+                                      env={**os.environ, "PYTHONPATH": BIN_DIR + os.pathsep + os.environ.get("PYTHONPATH", "")})
                         self._send_json({"installed": True, "version": ver.stdout.strip(), "path": ytdlp_path})
                     except Exception:
                         self._send_json({"installed": True, "version": "unknown", "path": ytdlp_path})
@@ -1221,6 +1225,24 @@ class _Handler(BaseHTTPRequestHandler):
                     else:
                         # Try yt-dlp -U first (works on piCorePlayer and
                         # systems where yt-dlp is a standalone binary)
+                        # Check if yt-dlp is a wrapper script pointing to system install
+                        with open(ytdlp, "rb") as _f:
+                            _header = _f.read(2)
+                        _is_script = _header == b"#!"
+                        _ytdlp_pkg = os.path.join(BIN_DIR, "yt_dlp")
+                        _has_local_pkg = os.path.isdir(_ytdlp_pkg)
+                        if _is_script and not _has_local_pkg:
+                            self._send_json({"status": "error", "message": "yt-dlp is installed as a system package. Use Download yt-dlp to install a local copy that can be updated, or run: sudo pip3 install yt-dlp --upgrade --break-system-packages"})
+                            return
+                        if _is_script and _has_local_pkg:
+                            # Re-download the wheel to update
+                            ok, msg = download_ytdlp()
+                            if ok:
+                                ver2 = subprocess.run([ytdlp, "--version"], capture_output=True, text=True, timeout=30)
+                                self._send_json({"status": "ok", "version": ver2.stdout.strip() or msg})
+                            else:
+                                self._send_json({"status": "error", "message": msg})
+                            return
                         result = subprocess.run(
                             [ytdlp, "-U"],
                             capture_output=True, text=True, timeout=120
