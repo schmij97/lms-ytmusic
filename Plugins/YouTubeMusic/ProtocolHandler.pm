@@ -142,6 +142,10 @@ sub getNextTrack {
     my $server_ip  = Slim::Utils::Network::serverAddr() || '127.0.0.1';
     my $streamUrl  = "http://$server_ip:$port/stream/$vid";
 
+    # If autoplay is disabled, ensure repeat is off so player stops after queue ends
+    unless ($prefs->get('autoplay') // 1) {
+        $song->master()->execute(['playlist', 'repeat', 0]) if eval { $song->master() };
+    }
     $log->info("Routing playback through local proxy: $streamUrl");
 
     $song->streamUrl($streamUrl);

@@ -802,8 +802,6 @@ def _prefetch_worker(video_id):
     finally:
         with _prefetch_lock:
             _prefetch_started.discard(video_id)
-
-
 def start_prefetch(video_id):
     _, done_path = _prefetch_paths(video_id)
     if os.path.exists(done_path):

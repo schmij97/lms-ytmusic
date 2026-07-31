@@ -296,6 +296,7 @@ sub _on_playlist_stop {
         sub {
             my $mode = Slim::Player::Source::playmode($client);
             return unless $mode eq 'stop';
+            return unless $prefs->get('autoplay') // 1;
             $log->info("Player genuinely stopped — triggering radio");
             Plugins::YouTubeMusic::ProtocolHandler::reset_radio($client);
             Plugins::YouTubeMusic::ProtocolHandler::_start_radio($client, $vid);
