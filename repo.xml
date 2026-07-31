@@ -4,14 +4,14 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.56" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.57" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">ARM/Pi: Download and Update yt-dlp use Python wheel with correct PYTHONPATH. Autoplay toggle fixed — player now stops cleanly after queue ends when autoplay is disabled. yt-dlp version check timeout increased to 30s for slow ARM devices.</changes>
+      <changes lang="EN">Autoplay toggle fixed — player now stops cleanly after queue ends when autoplay is disabled. ARM/Pi: yt-dlp version check timeout increased to 30s. Update button now re-downloads wheel correctly.</changes>
       <creator>schmij97</creator>
       <category>musicservices</category>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.56/YouTubeMusic-1.3.56.zip</url>
-      <sha>39ca826383c084d438404bfb9b341d84b96be48e</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.57/YouTubeMusic-1.3.57.zip</url>
+      <sha>740c1ffbe524c810302c6672c85bb8beb8fae7bf</sha>
     </plugin>
   </plugins>
 </extensions>
