@@ -880,22 +880,30 @@ def download_ytdlp():
         version  = release["tag_name"]
         asset_name, is_zip = _platform_ytdlp_asset()
 
-        # If no binary available for this platform, use pip
+        # If no binary available for this platform, use system yt-dlp or pip
         if asset_name is None:
-            logging.info("No binary available for this platform, using pip")
+            logging.info("No binary available for this platform, checking system yt-dlp")
+            os.makedirs(BIN_DIR, exist_ok=True)
+            wrapper = os.path.join(BIN_DIR, "yt-dlp")
+            # Check if yt-dlp is already installed system-wide
+            system_ytdlp = shutil.which("yt-dlp") or shutil.which("yt_dlp")
+            if system_ytdlp and os.path.abspath(system_ytdlp) != os.path.abspath(wrapper):
+                with open(wrapper, "w") as f:
+                    f.write(f"#!/bin/sh\nexec {system_ytdlp} \"$@\"\n")
+                os.chmod(wrapper, 0o755)
+                return True, version
+            # Fall back to pip install
             result = subprocess.run(
                 [sys.executable, "-m", "pip", "install", "yt-dlp",
-                 "--upgrade", "--break-system-packages",
-                 "--target", PLUGIN_DIR, "-q"],
+                 "--upgrade", "--break-system-packages", "-q"],
                 capture_output=True, text=True, timeout=120
             )
             if result.returncode == 0:
-                # Create wrapper script in Bin/ directory
-                os.makedirs(BIN_DIR, exist_ok=True)
-                wrapper = os.path.join(BIN_DIR, "yt-dlp")
-                with open(wrapper, "w") as f:
-                    f.write(f"#!/bin/sh\nexec {sys.executable} -m yt_dlp \"$@\"\n")
-                os.chmod(wrapper, 0o755)
+                system_ytdlp = shutil.which("yt-dlp")
+                if system_ytdlp:
+                    with open(wrapper, "w") as f:
+                        f.write(f"#!/bin/sh\nexec {system_ytdlp} \"$@\"\n")
+                    os.chmod(wrapper, 0o755)
                 return True, version
             return False, result.stderr.strip() or "pip install failed"
 
@@ -1158,7 +1166,9 @@ class _Handler(BaseHTTPRequestHandler):
                 if ytdlp_path:
                     import subprocess as _sp
                     try:
-                        ver = _sp.run([ytdlp_path, "--version"], capture_output=True, text=True, timeout=5)
+                        # Try running actual yt-dlp binary first, fall back to wrapper
+                        real_ytdlp = shutil.which("yt-dlp") or ytdlp_path
+                        ver = _sp.run([real_ytdlp, "--version"], capture_output=True, text=True, timeout=30)
                         self._send_json({"installed": True, "version": ver.stdout.strip(), "path": ytdlp_path})
                     except Exception:
                         self._send_json({"installed": True, "version": "unknown", "path": ytdlp_path})

@@ -12,7 +12,7 @@
         document.getElementById('ytdlpDownloadBtn').disabled = true;
         document.getElementById('ytdlpUpdateBtn').disabled = true;
         status.textContent = loadingMsg;
-        fetch('/plugins/YouTubeMusic/proxy/' + endpoint)
+        fetch('http://' + window.location.hostname + ':9876/' + endpoint)
             .then(r => r.json())
             .then(d => {
                 if (d.status === 'ok') {
@@ -31,7 +31,7 @@
     }
     // Check yt-dlp status on page load
     (function() {
-        fetch('/plugins/YouTubeMusic/proxy/ytdlp_status')
+        fetch('http://' + window.location.hostname + ':9876/ytdlp_status')
             .then(r => r.json())
             .then(d => {
                 var el = document.getElementById('ytdlpInstalled');
@@ -66,7 +66,7 @@
     <span id="ffmpegStatus" style="margin-left:10px;"></span>
     <script>
     (function() {
-        fetch('/plugins/YouTubeMusic/proxy/ffmpeg_status')
+        fetch('http://' + window.location.hostname + ':9876/ffmpeg_status')
             .then(r => r.json())
             .then(d => {
                 var el = document.getElementById('ffmpegInstalled');
@@ -89,7 +89,7 @@
         var status = document.getElementById('ffmpegStatus');
         btn.disabled = true;
         status.textContent = 'Downloading ffmpeg... (may take a few minutes)';
-        fetch('/plugins/YouTubeMusic/proxy/download_ffmpeg')
+        fetch('http://' + window.location.hostname + ':9876/download_ffmpeg')
             .then(r => r.json())
             .then(d => {
                 if (d.status === 'ok') {
