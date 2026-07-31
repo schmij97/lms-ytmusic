@@ -836,13 +836,12 @@ def get_prefetched_path(video_id):
 # Plugin directory — yt-dlp binary stored in Bin/ subdir per LMS convention
 # LMS automatically adds <plugin>/Bin to PATH so it will be found system-wide
 PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
-# On Windows, store binaries in a persistent location outside the plugin directory
-# so they survive plugin updates. On Linux/Mac, use the plugin Bin directory.
-if os.name == "nt":
-    _data_root = os.environ.get("PROGRAMDATA", "C:\\ProgramData")
-    BIN_DIR = os.path.join(_data_root, "Lyrion", "YouTubeMusic", "Bin")
-else:
-    BIN_DIR = os.path.join(PLUGIN_DIR, "Bin")
+# Store binaries in a persistent location outside the plugin directory
+# so they survive plugin updates on all platforms.
+# Plugin dir is: <cache>/InstalledPlugins/Plugins/YouTubeMusic
+# We store binaries at: <cache>/YouTubeMusic/Bin
+_cache_dir = os.path.dirname(os.path.dirname(os.path.dirname(PLUGIN_DIR)))
+BIN_DIR = os.path.join(_cache_dir, "YouTubeMusic", "Bin")
 _ytdlp_exe = "yt-dlp.exe" if os.name == "nt" else "yt-dlp"
 YTDLP_BIN  = os.path.join(BIN_DIR, _ytdlp_exe)
 
@@ -1029,7 +1028,7 @@ def stream_audio(video_id):
         "--extractor-retries", "2",
         "--no-part",
         "-f", "bestaudio[ext=m4a]/bestaudio[ext=mp3]/bestaudio",
-        "--js-runtimes", "node" if os.name == "nt" else "nodejs",
+        "--js-runtimes", "node,nodejs",
         "--add-header", "User-Agent:com.google.android.youtube/17.29.34",
         "-o", "-",
         url,

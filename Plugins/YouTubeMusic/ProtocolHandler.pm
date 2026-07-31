@@ -172,7 +172,7 @@ sub _prefetch_with_client {
         if ($cur_track) {
             my $cur_url = eval { $cur_track->url } // '';
             my ($cur_vid) = $cur_url =~ m{^ytm://([A-Za-z0-9_\-]+)};
-            _start_radio($client, $cur_vid) if $cur_vid;
+            _start_radio($client, $cur_vid) if $cur_vid && $prefs->get('autoplay') // 1;
         }
         return;
     }
@@ -218,7 +218,7 @@ sub _prefetch_next_track {
         if ($cur_track) {
             my $cur_url = eval { $cur_track->url } // '';
             my ($cur_vid) = $cur_url =~ m{^ytm://([A-Za-z0-9_\-]+)};
-            _start_radio($client, $cur_vid) if $cur_vid;
+            _start_radio($client, $cur_vid) if $cur_vid && $prefs->get('autoplay') // 1;
         }
         return;
     }

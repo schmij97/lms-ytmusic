@@ -12,7 +12,7 @@
         document.getElementById('ytdlpDownloadBtn').disabled = true;
         document.getElementById('ytdlpUpdateBtn').disabled = true;
         status.textContent = loadingMsg;
-        fetch('http://' + window.location.hostname + ':9876/' + endpoint)
+        fetch('/plugins/YouTubeMusic/proxy/' + endpoint)
             .then(r => r.json())
             .then(d => {
                 if (d.status === 'ok') {
@@ -31,7 +31,7 @@
     }
     // Check yt-dlp status on page load
     (function() {
-        fetch('http://' + window.location.hostname + ':9876/ytdlp_status')
+        fetch('/plugins/YouTubeMusic/proxy/ytdlp_status')
             .then(r => r.json())
             .then(d => {
                 var el = document.getElementById('ytdlpInstalled');
@@ -66,7 +66,7 @@
     <span id="ffmpegStatus" style="margin-left:10px;"></span>
     <script>
     (function() {
-        fetch('http://' + window.location.hostname + ':9876/ffmpeg_status')
+        fetch('/plugins/YouTubeMusic/proxy/ffmpeg_status')
             .then(r => r.json())
             .then(d => {
                 var el = document.getElementById('ffmpegInstalled');
@@ -89,7 +89,7 @@
         var status = document.getElementById('ffmpegStatus');
         btn.disabled = true;
         status.textContent = 'Downloading ffmpeg... (may take a few minutes)';
-        fetch('http://' + window.location.hostname + ':9876/download_ffmpeg')
+        fetch('/plugins/YouTubeMusic/proxy/download_ffmpeg')
             .then(r => r.json())
             .then(d => {
                 if (d.status === 'ok') {
@@ -107,6 +107,10 @@
             });
     }
     </script>
+  [% END %]
+  [% WRAPPER setting title="Autoplay" desc="When enabled, YouTube Music automatically adds similar songs when the queue is nearly empty. Disable to play only the current queue then stop." %]
+    <input type="checkbox" name="autoplay" id="autoplay" value="1" [% IF autoplay %]checked[% END %] />
+    <label for="autoplay">Enable autoplay (add similar songs when queue ends)</label>
   [% END %]
   [% WRAPPER setting title="PLUGIN_YOUTUBEMUSIC_PROXY_PORT" desc="PLUGIN_YOUTUBEMUSIC_PROXY_PORT_DESC" %]
     <input type="number" name="pref_proxy_port"
