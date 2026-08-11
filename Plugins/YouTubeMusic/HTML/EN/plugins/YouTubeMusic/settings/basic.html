@@ -108,6 +108,14 @@
     }
     </script>
   [% END %]
+  [% WRAPPER setting title="Audio Codec" desc="Select the audio codec for streaming. MP3 is compatible with all players. FLAC is lossless but requires more CPU. AAC is used as a fallback on some systems. Auto selects the best available codec automatically." %]
+    <select name="codec" id="codec">
+      <option value="auto" [% IF codec == 'auto' %]selected[% END %]>Auto (recommended)</option>
+      <option value="mp3"  [% IF codec == 'mp3'  %]selected[% END %]>MP3</option>
+      <option value="flac" [% IF codec == 'flac' %]selected[% END %]>FLAC (lossless)</option>
+      <option value="aac"  [% IF codec == 'aac'  %]selected[% END %]>AAC</option>
+    </select>
+  [% END %]
   [% WRAPPER setting title="Autoplay" desc="When enabled, YouTube Music automatically adds similar songs when the queue is nearly empty. Disable to play only the current queue then stop." %]
     <input type="checkbox" name="autoplay" id="autoplay" value="1" [% IF autoplay %]checked[% END %] />
     <label for="autoplay">Enable autoplay (add similar songs when queue ends)</label>

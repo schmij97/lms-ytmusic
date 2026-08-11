@@ -110,7 +110,8 @@ sub _start_proxy {
     if ($is_windows) {
         # fork() is emulated on Windows via threads which conflicts with LMS
         # Use system(1,...) instead which spawns a true background process
-        my $pid = system(1, $python, $script, '--port', $port, '--log-level', 'WARNING');
+        my $codec = $prefs->get('codec') || 'auto';
+        my $pid = system(1, $python, $script, '--port', $port, '--log-level', 'WARNING', '--codec', $codec);
         if (!$pid) {
             $log->error("system(1,...) failed: $!");
             return;
@@ -124,7 +125,8 @@ sub _start_proxy {
             return;
         }
         if ($pid == 0) {
-            exec($python, $script, '--port', $port, '--log-level', 'WARNING') or do {
+            my $codec = $prefs->get('codec') || 'auto';
+            exec($python, $script, '--port', $port, '--log-level', 'WARNING', '--codec', $codec) or do {
                 $log->error("exec failed: $!");
                 exit 1;
             };

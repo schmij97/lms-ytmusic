@@ -18,7 +18,7 @@ sub name { 'PLUGIN_YOUTUBEMUSIC' }
 
 sub page { 'plugins/YouTubeMusic/settings/basic.html' }
 
-sub prefs { return ($prefs, qw(proxy_port autoplay)) }
+sub prefs { return ($prefs, qw(proxy_port autoplay codec)) }
 
 sub handler {
     my ($class, $client, $params) = @_;
@@ -31,6 +31,10 @@ sub handler {
 
         # Save autoplay setting
         $prefs->set('autoplay', $params->{autoplay} ? 1 : 0);
+        # Save codec setting
+        my $codec = $params->{codec} || 'auto';
+        $codec = 'auto' unless grep { $_ eq $codec } qw(auto mp3 flac aac);
+        $prefs->set('codec', $codec);
         # Save playlists — collect all name/browseId pairs
         my @playlists;
         my $names = $params->{playlist_name};
@@ -54,6 +58,7 @@ sub handler {
 
     $params->{my_playlists} = $prefs->get('my_playlists') || [];
     $params->{autoplay} = $prefs->get('autoplay') // 1;
+    $params->{codec} = $prefs->get('codec') || 'auto';
 
     return $class->SUPER::handler($client, $params);
 }

@@ -1423,7 +1423,16 @@ class _Handler(BaseHTTPRequestHandler):
             logging.exception("Proxy error on %s", self.path)
             self._error("Internal proxy error", 500)
 
-def run(port=9876, log_level="INFO"):
+def run(port=9876, log_level="INFO", codec="auto"):
+    global _AUDIO_CODEC, _AUDIO_FORMAT, _AUDIO_MIME
+    if codec == "mp3":
+        _AUDIO_CODEC, _AUDIO_FORMAT, _AUDIO_MIME = "libmp3lame", "mp3", "audio/mpeg"
+    elif codec == "flac":
+        _AUDIO_CODEC, _AUDIO_FORMAT, _AUDIO_MIME = "flac", "flac", "audio/flac"
+    elif codec == "aac":
+        _AUDIO_CODEC, _AUDIO_FORMAT, _AUDIO_MIME = "aac", "adts", "audio/aac"
+    if codec != "auto":
+        logging.info("Codec overridden to: %s", codec)
     logging.basicConfig(
         level=getattr(logging, log_level.upper(), logging.INFO),
         format="%(asctime)s [%(levelname)s] %(message)s",
@@ -1438,5 +1447,6 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--port",      type=int, default=9876)
     ap.add_argument("--log-level", default="INFO")
+    ap.add_argument("--codec",     default="auto", choices=["auto", "mp3", "flac", "aac"])
     args = ap.parse_args()
-    run(args.port, args.log_level)
+    run(args.port, args.log_level, args.codec)
