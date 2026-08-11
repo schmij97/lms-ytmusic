@@ -4,14 +4,14 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.58" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.59" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Fix settings page on Android — status endpoints (yt-dlp, ffmpeg) now proxied through LMS port 9000 to avoid CORS issues on mobile browsers. Download and Update buttons still use direct port 9876.</changes>
+      <changes lang="EN">Register URL handler for real YouTube Music URLs — pasting a music.youtube.com, youtube.com, or youtu.be URL directly into LMS now plays via the YouTube Music plugin.</changes>
       <creator>schmij97</creator>
       <category>musicservices</category>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.58/YouTubeMusic-1.3.58.zip</url>
-      <sha>d522089bec9dbe6af9bc53da474474824da917e5</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.59/YouTubeMusic-1.3.59.zip</url>
+      <sha>261c2ec0a8ad4fbaccbcf8e15f145456dda957ec</sha>
     </plugin>
   </plugins>
 </extensions>

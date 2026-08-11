@@ -50,6 +50,8 @@ sub initPlugin {
     Slim::Player::ProtocolHandlers->registerHandler(
         'ytmplaylist', 'Plugins::YouTubeMusic::PlaylistProtocolHandler'
     );
+    # Handle real YouTube Music URLs pasted directly into LMS
+
 
 
     $class->SUPER::initPlugin(
@@ -273,6 +275,16 @@ sub postinitPlugin {
             },
     ) );
     $log->info("Registered YouTube Music global search provider");
+    # Handle real YouTube Music URLs pasted directly into LMS
+    if (Slim::Player::ProtocolHandlers->can('registerURLHandler')) {
+        Slim::Player::ProtocolHandlers->registerURLHandler(
+            qr{^https?://(?:(?:www|m|music)\.youtube\.com/(?:watch\?|playlist\?|channel/)|youtu\.be/)}i,
+            'Plugins::YouTubeMusic::ProtocolHandler'
+        );
+        $log->info("Registered YouTube Music URL handler for music.youtube.com URLs");
+    } else {
+        $log->warn("registerURLHandler not available in this LMS version");
+    }
     _register_proxy_handlers();
 
     # Subscribe to player stop events so we can trigger radio

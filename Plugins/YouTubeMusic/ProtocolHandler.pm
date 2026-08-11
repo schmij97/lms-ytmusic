@@ -118,6 +118,7 @@ sub _extract_video_id {
     ($vid) = $url =~ m{^youtube://([A-Za-z0-9_\-]+)$}               and return $vid;
     ($vid) = $url =~ m{youtube://(?:www\.)?youtube\.com/v/([A-Za-z0-9_\-]+)} and return $vid;
     ($vid) = $url =~ m{[?&]v=([A-Za-z0-9_\-]+)}                     and return $vid;
+    ($vid) = $url =~ m{music\.youtube\.com/watch\?.*v=([A-Za-z0-9_\-]+)}  and return $vid;
     ($vid) = $url =~ m{youtu\.be/([A-Za-z0-9_\-]+)}                and return $vid;
     return undef;
 }
