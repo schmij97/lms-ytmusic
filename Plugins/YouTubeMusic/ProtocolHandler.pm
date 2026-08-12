@@ -176,9 +176,11 @@ sub getNextTrack {
     Plugins::YouTubeMusic::API->prefetch($vid, sub {});
 
 
-    # Delay prefetch check by 3s so radio addtracks completes first
+    # Only trigger prefetch chain for the first track — subsequent tracks
+    # are prefetched by the chain itself as playback progresses
     my $prefetch_client = eval { $song->master() };
-    _prefetch_with_client($prefetch_client) if $prefetch_client;
+    my $current_idx = eval { Slim::Player::Source::playingSongIndex($prefetch_client) } // 0;
+    _prefetch_with_client($prefetch_client) if $prefetch_client && $current_idx == 0;
     $successCb->();
 }
 
