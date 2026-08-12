@@ -603,6 +603,84 @@ def browse_radio(video_id):
     return result
 
 
+def browse_olak_playlist(playlist_id):
+    """Resolve OLAK5uy_ album/playlist IDs from YouTube Music browser URLs.
+    Uses the YouTube WEB client — no authentication required."""
+    import urllib.request as _req
+    cache_key = f"olak:{playlist_id}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+    yt_headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "Origin": "https://www.youtube.com",
+        "Referer": "https://www.youtube.com/",
+        "X-YouTube-Client-Name": "1",
+        "X-YouTube-Client-Version": "2.20260811.01.00",
+    }
+    yt_client = {"clientName": "WEB", "clientVersion": "2.20260811.01.00", "hl": "en", "gl": "US"}
+    payload = json.dumps({"context": {"client": yt_client}, "browseId": "VL" + playlist_id}).encode()
+    req = _req.Request(
+        "https://www.youtube.com/youtubei/v1/browse?prettyPrint=false",
+        data=payload, headers=yt_headers, method="POST"
+    )
+    with _req.urlopen(req, timeout=20) as resp:
+        data = json.loads(resp.read())
+    items = []
+    seen = set()
+
+    def _get_text(o):
+        if isinstance(o, str): return o
+        if isinstance(o, dict):
+            if "content" in o: return o["content"]
+            runs = o.get("runs", [])
+            if runs: return "".join(r.get("text","") for r in runs)
+            return o.get("simpleText", "")
+        return ""
+
+    def _extract_lockup(lockup):
+        vid = lockup.get("contentId", "")
+        if not vid or vid in seen: return
+        seen.add(vid)
+        meta = lockup.get("metadata", {}).get("lockupMetadataViewModel", {})
+        title = _get_text(meta.get("title", {}))
+        rows = meta.get("metadata", {}).get("contentMetadataViewModel", {}).get("metadataRows", [])
+        artist = ""
+        if rows and rows[0].get("metadataParts"):
+            parts = rows[0]["metadataParts"]
+            if parts: artist = _get_text(parts[0].get("text", {}))
+        duration = ""
+        try:
+            for badge in lockup["contentImage"]["thumbnailViewModel"]["overlays"][0]["thumbnailBottomOverlayViewModel"]["badges"]:
+                t = badge.get("thumbnailBadgeViewModel", {}).get("text", "")
+                if t and ":" in t:
+                    duration = t
+                    break
+        except (KeyError, IndexError, TypeError): pass
+        thumbnail = ""
+        try:
+            sources = lockup["contentImage"]["thumbnailViewModel"]["image"]["sources"]
+            if sources: thumbnail = sources[-1].get("url", "")
+        except (KeyError, IndexError, TypeError): pass
+        items.append({"type": "song", "title": title, "artist": artist, "album": "",
+                      "duration": duration, "videoId": vid, "thumbnail": thumbnail, "url": "ytm://" + vid})
+
+    def walk(obj):
+        if isinstance(obj, dict):
+            if "lockupViewModel" in obj:
+                _extract_lockup(obj["lockupViewModel"])
+            else:
+                for v in obj.values():
+                    walk(v)
+        elif isinstance(obj, list):
+            for v in obj:
+                walk(v)
+    walk(data)
+    result = {"browseId": playlist_id, "items": items}
+    _cache_set(cache_key, result)
+    return result
+
 def browse_playlist(browse_id):
     cache_key = f"playlist:{browse_id}"
     cached = _cache_get(cache_key)
@@ -1291,7 +1369,13 @@ class _Handler(BaseHTTPRequestHandler):
                 bid = p("browseId")
                 if not bid:
                     return self._error("Missing browseId", 400)
-                self._send_json(browse_playlist(bid))
+                # Handle OLAK5uy_ IDs (YouTube Music browser URLs) differently
+                if bid.startswith("VLOLAK5uy_"):
+                    self._send_json(browse_olak_playlist(bid[2:]))
+                elif bid.startswith("OLAK5uy_"):
+                    self._send_json(browse_olak_playlist(bid))
+                else:
+                    self._send_json(browse_playlist(bid))
             elif path == "/album":
                 bid = p("browseId")
                 if not bid:

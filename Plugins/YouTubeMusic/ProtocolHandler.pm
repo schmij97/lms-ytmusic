@@ -123,10 +123,28 @@ sub _extract_video_id {
     return undef;
 }
 
+
 sub getNextTrack {
     my ($class, $song, $successCb, $errorCb) = @_;
 
     my $url   = $song->currentTrack()->url;
+    # Check if this is an OLAK5uy_ playlist URL from browser address bar
+    if ($url =~ m{[?&]list=(OLAK5uy_[A-Za-z0-9_\-]+)}) {
+        my $list_id = $1;
+        $log->info("Detected OLAK playlist URL, exploding ytmplaylist://$list_id");
+        Plugins::YouTubeMusic::PlaylistProtocolHandler->explodePlaylist(
+            $song->master(), "ytmplaylist://$list_id",
+            sub {
+                my $urls = shift;
+                unless ($urls && @$urls) { $errorCb->("Failed to load playlist"); return; }
+                $song->master()->execute(['playlist', 'clear']);
+                $song->master()->execute(['playlist', 'add', $_]) for @$urls;
+                $song->master()->execute(['play']);
+                $successCb->() if $successCb;
+            }
+        );
+        return;
+    }
     my $vid = _extract_video_id($url);
 
     unless ($vid) {
