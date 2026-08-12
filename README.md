@@ -59,6 +59,19 @@ sudo pip3 install yt-dlp --break-system-packages
 
 > **Tip:** Once installed, you can update yt-dlp at any time from **Settings → Advanced → YouTube Music → Update yt-dlp** without needing command line access.
 
+
+### Pasting YouTube Music URLs
+
+You can paste YouTube Music URLs directly into LMS to play tracks or full albums:
+
+**Single track** — copy the URL from the YouTube Music browser address bar while a song is playing:
+`https://music.youtube.com/watch?v=dQw4w9WgXcQ`
+
+**Album or playlist** — copy the URL from the YouTube Music browser address bar while viewing an album:
+`https://music.youtube.com/playlist?list=OLAK5uy_...`
+
+To use: go to **Settings → Advanced → YouTube Music**, paste the URL, browse to it and play. Or use the **Add URL to playlist** feature in LMS directly. Full metadata (title, artist, duration, artwork) is retrieved automatically — no authentication required.
+
 ### Windows notes
 
 Getting Python detected correctly by LMS on Windows requires installing Python system-wide rather than per-user. When running the Python installer:
