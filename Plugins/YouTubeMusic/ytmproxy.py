@@ -1523,6 +1523,17 @@ def run(port=9876, log_level="INFO", codec="auto"):
         stream=sys.stderr,
         force=True,
     )
+    # Auto-download yt-dlp on first startup if not already installed
+    if not _find_ytdlp():
+        logging.info("yt-dlp not found — attempting auto-download")
+        try:
+            ok, msg = download_ytdlp()
+            if ok:
+                logging.info("yt-dlp auto-downloaded successfully: %s", msg)
+            else:
+                logging.warning("yt-dlp auto-download failed: %s", msg)
+        except Exception as e:
+            logging.warning("yt-dlp auto-download error: %s", e)
     server = ThreadingHTTPServer(("0.0.0.0", port), _Handler)
     logging.info("YTMusic proxy listening on 0.0.0.0:%d", port)
     server.serve_forever()
