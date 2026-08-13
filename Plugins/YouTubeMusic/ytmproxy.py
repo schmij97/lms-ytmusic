@@ -816,6 +816,7 @@ _AUDIO_CODEC, _AUDIO_FORMAT, _AUDIO_MIME = _detect_audio_codec()
 PREFETCH_DIR = os.path.join(tempfile.gettempdir(), "ytmproxy_prefetch")
 _prefetch_started = set()
 _prefetch_lock = threading.Lock()
+_prefetch_semaphore = threading.Semaphore(2)  # Max 2 concurrent prefetch downloads
 
 def _prefetch_paths(video_id):
     os.makedirs(PREFETCH_DIR, exist_ok=True)
@@ -854,32 +855,33 @@ def _cleanup_old_prefetch(max_age=600):
 
 def _prefetch_worker(video_id):
     tmp_path, done_path = _prefetch_paths(video_id)
-    t0 = time.time()
-    logging.warning("PREFETCH_TIMING %s started", video_id)
-    try:
-        logged_first = False
-        logged_128k = False
-        with open(tmp_path, "wb") as f:
-            for chunk in stream_audio(video_id):
-                if not logged_first:
-                    logging.warning("PREFETCH_TIMING %s first byte after %.2fs", video_id, time.time()-t0)
-                    logged_first = True
-                f.write(chunk)
-                f.flush()
-                if not logged_128k and os.path.getsize(tmp_path) >= 131072:
-                    logging.warning("PREFETCH_TIMING %s 128KB after %.2fs", video_id, time.time()-t0)
-                    logged_128k = True
-        os.replace(tmp_path, done_path)
-        logging.warning("PREFETCH_TIMING %s complete after %.2fs", video_id, time.time()-t0)
-    except Exception:
-        logging.exception("Prefetch failed for %s", video_id)
+    with _prefetch_semaphore:
+        t0 = time.time()
+        logging.warning("PREFETCH_TIMING %s started", video_id)
         try:
-            os.remove(tmp_path)
-        except OSError:
-            pass
-    finally:
-        with _prefetch_lock:
-            _prefetch_started.discard(video_id)
+            logged_first = False
+            logged_128k = False
+            with open(tmp_path, "wb") as f:
+                for chunk in stream_audio(video_id):
+                    if not logged_first:
+                        logging.warning("PREFETCH_TIMING %s first byte after %.2fs", video_id, time.time()-t0)
+                        logged_first = True
+                    f.write(chunk)
+                    f.flush()
+                    if not logged_128k and os.path.getsize(tmp_path) >= 131072:
+                        logging.warning("PREFETCH_TIMING %s 128KB after %.2fs", video_id, time.time()-t0)
+                        logged_128k = True
+            os.replace(tmp_path, done_path)
+            logging.warning("PREFETCH_TIMING %s complete after %.2fs", video_id, time.time()-t0)
+        except Exception:
+            logging.exception("Prefetch failed for %s", video_id)
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+        finally:
+            with _prefetch_lock:
+                _prefetch_started.discard(video_id)
 def start_prefetch(video_id):
     _, done_path = _prefetch_paths(video_id)
     if os.path.exists(done_path):
