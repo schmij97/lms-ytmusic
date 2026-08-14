@@ -4,14 +4,14 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.64" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.65" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Fix excessive concurrent yt-dlp/ffmpeg processes — background prefetch downloads are now limited to 2 concurrent at any time via a semaphore. Live stream requests are unaffected and always get immediate access.</changes>
+      <changes lang="EN">Increase initial stream buffer wait from 5 to 30 seconds — fixes first-track timeout on slow systems where yt-dlp takes longer to start (e.g. older Macs). Fast systems are unaffected.</changes>
       <creator>schmij97</creator>
       <category>musicservices</category>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.64/YouTubeMusic-1.3.64.zip</url>
-      <sha>4848ff750173732da782dcd7af5b7f882055e0d1</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.65/YouTubeMusic-1.3.65.zip</url>
+      <sha>54a9707c43ea69682ef22b1fc9404b42b3da36d4</sha>
     </plugin>
   </plugins>
 </extensions>

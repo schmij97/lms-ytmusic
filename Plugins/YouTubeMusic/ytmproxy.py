@@ -1428,8 +1428,8 @@ class _Handler(BaseHTTPRequestHandler):
                 cached = get_prefetched_path(vid)
                 if not cached:
                     start_prefetch(vid)
-                    # Wait up to 5 seconds for first bytes to appear
-                    for _ in range(10):  # up to 5 seconds
+                    # Wait up to 30 seconds for first bytes to appear (slow systems may need more time)
+                    for _ in range(60):  # up to 30 seconds
                         if os.path.exists(tmp_path) and os.path.getsize(tmp_path) > 8192:
                             break
                         if os.path.exists(done_path):
