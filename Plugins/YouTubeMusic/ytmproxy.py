@@ -1428,24 +1428,31 @@ class _Handler(BaseHTTPRequestHandler):
                 cached = get_prefetched_path(vid)
                 if not cached:
                     start_prefetch(vid)
-                    # Wait up to 30 seconds for first bytes to appear (slow systems may need more time)
-                    for _ in range(60):  # up to 30 seconds
-                        if os.path.exists(tmp_path) and os.path.getsize(tmp_path) > 8192:
-                            break
-                        if os.path.exists(done_path):
-                            break
-                        time.sleep(0.5)
+                # Send HTTP headers immediately — don't make LMS wait for yt-dlp to start
+                try:
+                    self.send_response(200)
+                    self.send_header("Content-Type", _AUDIO_MIME)
+                    self.send_header("Cache-Control", "no-cache")
+                    self.send_header("Connection", "close")
+                    self.send_header("icy-metaint", "0")
+                    self.end_headers()
+                    self.wfile.flush()
+                except (BrokenPipeError, ConnectionResetError):
+                    return
+                # Wait for first bytes — timeout only applies to this initial wait
+                # not to the stream itself (a long song should stream indefinitely)
+                first_byte_deadline = time.time() + 60
+                while time.time() < first_byte_deadline:
+                    if os.path.exists(done_path):
+                        break
+                    if os.path.exists(tmp_path) and os.path.getsize(tmp_path) > 0:
+                        break
+                    time.sleep(0.1)
                 sz = os.path.getsize(tmp_path) if os.path.exists(tmp_path) else 0
                 logging.warning("Starting stream %s with %d bytes buffered", vid, sz)
                 open_path = done_path if os.path.exists(done_path) else tmp_path
                 if os.path.exists(open_path) and os.path.getsize(open_path) > 0:
                     try:
-                        self.send_response(200)
-                        self.send_header("Content-Type", _AUDIO_MIME)
-                        self.send_header("Cache-Control", "no-cache")
-                        self.send_header("Connection", "close")
-                        self.send_header("icy-metaint", "0")
-                        self.end_headers()
                         position = 0
                         while True:
                             current = tmp_path if os.path.exists(tmp_path) else done_path
