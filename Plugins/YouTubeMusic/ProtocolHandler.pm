@@ -111,6 +111,35 @@ sub new {
 #   youtube://www.youtube.com/v/VIDEO_ID   (philippe44 compat)
 #   https://www.youtube.com/watch?v=ID     (plain YouTube URL)
 #   https://youtu.be/VIDEO_ID             (short URL)
+sub explodePlaylist {
+    my ($class, $client, $url, $callback) = @_;
+    # Handle OLAK5uy_ playlist URLs from browser address bar
+    if ($url =~ m{[?&]list=(OLAK5uy_[A-Za-z0-9_\-]+)}) {
+        my $list_id = $1;
+        $log->info("explodePlaylist: resolving OLAK playlist $list_id");
+        Plugins::YouTubeMusic::PlaylistProtocolHandler->explodePlaylist($client, "ytmplaylist://$list_id", $callback);
+        return;
+    }
+    # Handle ytmplaylist:// URLs
+    if ($url =~ m{^ytmplaylist://}) {
+        Plugins::YouTubeMusic::PlaylistProtocolHandler->explodePlaylist($client, $url, $callback);
+        return;
+    }
+    # Handle single ytm:// track URLs
+    if ($url =~ m{^ytm://([A-Za-z0-9_\-]+)}) {
+        $callback->([$url]);
+        return;
+    }
+    # Handle real YouTube watch URLs
+    my $vid = _extract_video_id($url);
+    if ($vid) {
+        $callback->(["ytm://$vid"]);
+        return;
+    }
+    $log->warn("explodePlaylist: unrecognised URL $url");
+    $callback->([]);
+}
+
 sub _extract_video_id {
     my ($url) = @_;
     my ($vid);
