@@ -1079,6 +1079,131 @@ def download_ffmpeg():
         logging.exception("Failed to download ffmpeg")
         return False, str(e)
 
+NODE_BIN = os.path.join(BIN_DIR, "node22", "node")
+NODE_MIN_VERSION = (22, 0, 0)
+
+def _check_node_version(candidate):
+    """Return True if candidate Node binary is v22+."""
+    try:
+        result = subprocess.run([candidate, "--version"], capture_output=True, text=True, timeout=5)
+        ver_str = result.stdout.strip().lstrip("v")
+        parts = tuple(int(x) for x in ver_str.split(".")[:3])
+        return parts >= NODE_MIN_VERSION
+    except Exception:
+        return False
+
+def _find_node():
+    """Find a suitable Node.js binary (v22+). Returns path or None."""
+    # Check plugin's own node22 first
+    if os.path.exists(NODE_BIN) and os.access(NODE_BIN, os.X_OK):
+        if _check_node_version(NODE_BIN):
+            return NODE_BIN
+    # Check system node
+    for candidate in ["/usr/bin/node", "/usr/local/bin/node", shutil.which("node")]:
+        if candidate and os.path.exists(candidate):
+            try:
+                result = subprocess.run([candidate, "--version"], capture_output=True, text=True, timeout=5)
+                ver_str = result.stdout.strip().lstrip("v")
+                parts = tuple(int(x) for x in ver_str.split(".")[:3])
+                if parts >= NODE_MIN_VERSION:
+                    return candidate
+            except Exception:
+                pass
+    return None
+
+def _platform_node_asset():
+    """Return (filename, url_template) for the Node 22 ARMv7/x64/arm64 binary."""
+    import platform as _platform
+    machine = _platform.machine().lower()
+    system = _platform.system().lower()
+    if system == "darwin":
+        arch = "arm64" if machine in ("arm64", "aarch64") else "x64"
+        return f"node-v22.23.2-darwin-{arch}.tar.gz"
+    if system == "windows" or os.name == "nt":
+        return "node-v22.23.2-win-x64.zip"
+    # Linux
+    if machine in ("aarch64", "arm64"):
+        return "node-v22.23.2-linux-arm64.tar.xz"
+    if machine in ("armv7l", "armv6l", "armhf"):
+        return "node-v22.23.2-linux-armv7l.tar.xz"
+    return "node-v22.23.2-linux-x64.tar.xz"
+
+def download_node():
+    """Download Node.js v22 into the plugin Bin directory. Returns (ok, message)."""
+    import urllib.request, tarfile, io
+    try:
+        filename = _platform_node_asset()
+        url = f"https://nodejs.org/dist/v22.23.2/{filename}"
+        logging.info("Downloading Node.js from %s", url)
+        os.makedirs(os.path.join(BIN_DIR, "node22"), exist_ok=True)
+        with urllib.request.urlopen(url, timeout=120) as resp:
+            data = resp.read()
+        if filename.endswith(".tar.xz") or filename.endswith(".tar.gz"):
+            mode = "r:xz" if filename.endswith(".xz") else "r:gz"
+            with tarfile.open(fileobj=io.BytesIO(data), mode=mode) as tf:
+                # Extract just the node binary
+                for member in tf.getmembers():
+                    if member.name.endswith("/bin/node"):
+                        member.name = "node.tmp"
+                        tf.extract(member, os.path.join(BIN_DIR, "node22"))
+                        break
+        elif filename.endswith(".zip"):
+            import zipfile
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                for name in zf.namelist():
+                    if name.endswith("/node.exe"):
+                        with zf.open(name) as src:
+                            with open(os.path.join(BIN_DIR, "node22", "node.exe"), "wb") as dst:
+                                dst.write(src.read())
+                        break
+        node_path = os.path.join(BIN_DIR, "node22", "node")
+        node_tmp = node_path + ".tmp"
+        if os.path.exists(node_tmp):
+            os.chmod(node_tmp, 0o755)
+            # Verify before making permanent
+            try:
+                result = subprocess.run([node_tmp, "--version"], capture_output=True, text=True, timeout=5)
+                if result.returncode == 0 and _check_node_version(node_tmp):
+                    os.rename(node_tmp, node_path)
+                    logging.info("Node.js %s installed to %s", result.stdout.strip(), node_path)
+                    return True, result.stdout.strip()
+                else:
+                    os.remove(node_tmp)
+                    return False, "downloaded Node failed version check"
+            except Exception as e:
+                try: os.remove(node_tmp)
+                except: pass
+                return False, f"Node verification failed: {e}"
+        if os.path.exists(node_path):
+            os.chmod(node_path, 0o755)
+            logging.info("Node.js v22 installed to %s", node_path)
+            return True, "v22.23.2"
+        return False, "node binary not found after extraction"
+    except Exception as e:
+        logging.exception("Failed to download Node.js")
+        return False, str(e)
+
+def _install_ytdlp_ejs():
+    """Install yt-dlp-ejs into BIN_DIR if not already present."""
+    ejs_marker = os.path.join(BIN_DIR, "yt_dlp_ejs")
+    if os.path.exists(ejs_marker):
+        return True
+    try:
+        import subprocess
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "yt-dlp-ejs==0.8.0",
+             "--target", BIN_DIR, "--quiet", "--break-system-packages"],
+            capture_output=True, text=True, timeout=60
+        )
+        if result.returncode == 0:
+            logging.info("yt-dlp-ejs installed to %s", BIN_DIR)
+            return True
+        logging.warning("yt-dlp-ejs install failed: %s", result.stderr)
+        return False
+    except Exception as e:
+        logging.warning("Failed to install yt-dlp-ejs: %s", e)
+        return False
+
 def _find_ytdlp():
     # Check plugin directory first (no sudo needed, always found)
     if os.path.isfile(YTDLP_BIN) and os.access(YTDLP_BIN, os.X_OK):
@@ -1108,6 +1233,7 @@ def stream_audio(video_id):
 
     url = f"https://music.youtube.com/watch?v={video_id}"
 
+    _NODE_PATH = _find_node()
     ytdlp_cmd = [
         ytdlp,
         "--no-playlist",
@@ -1119,7 +1245,9 @@ def stream_audio(video_id):
         "--extractor-retries", "2",
         "--no-part",
         "-f", "bestaudio[ext=m4a]/bestaudio[ext=mp3]/bestaudio",
-        "--js-runtimes", "node,nodejs",
+        # node_path computed before cmd list to avoid calling _find_node() twice
+        *(["--js-runtimes", f"node:{_NODE_PATH}"] if _NODE_PATH else ["--js-runtimes", "node"]),
+        "--extractor-args", "youtube:player_client=web_embedded",
         "--add-header", "User-Agent:com.google.android.youtube/17.29.34",
         "-o", "-",
         url,
@@ -1543,6 +1671,19 @@ def run(port=9876, log_level="INFO", codec="auto"):
                 logging.warning("yt-dlp auto-download failed: %s", msg)
         except Exception as e:
             logging.warning("yt-dlp auto-download error: %s", e)
+    # Auto-install yt-dlp-ejs for JS challenge support
+    _install_ytdlp_ejs()
+    # Auto-download Node 22 if no suitable node found
+    if not _find_node():
+        logging.info("Node 22+ not found — attempting auto-download")
+        try:
+            ok, msg = download_node()
+            if ok:
+                logging.info("Node.js auto-downloaded successfully: %s", msg)
+            else:
+                logging.warning("Node.js auto-download failed: %s", msg)
+        except Exception as e:
+            logging.warning("Node.js auto-download error: %s", e)
     server = ThreadingHTTPServer(("0.0.0.0", port), _Handler)
     logging.info("YTMusic proxy listening on 0.0.0.0:%d", port)
     server.serve_forever()
