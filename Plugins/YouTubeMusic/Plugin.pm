@@ -244,12 +244,7 @@ sub postinitPlugin {
         Slim::Player::ProtocolHandlers->registerHandler(
             'youtube', 'Plugins::YouTubeMusic::ProtocolHandler'
         );
-    } else {
-        $log->info("youtube:// already handled by another plugin, skipping shim");
-    }
-
-    # Handle real YouTube Music URLs — only register if philippe44's plugin is not present
-    if (!Slim::Player::ProtocolHandlers->handlerForURL('youtube://x')) {
+        # Also register URL handler for real YouTube Music URLs
         if (Slim::Player::ProtocolHandlers->can('registerURLHandler')) {
             Slim::Player::ProtocolHandlers->registerURLHandler(
                 qr{^https?://(?:(?:www|m|music)\.youtube\.com/(?:watch\?|playlist\?|channel/)|youtu\.be/)}i,
@@ -260,8 +255,9 @@ sub postinitPlugin {
             $log->warn("registerURLHandler not available in this LMS version");
         }
     } else {
-        $log->info("YouTube URL handler skipped — another plugin already registered");
+        $log->info("youtube:// already handled by another plugin, skipping URL handler registration");
     }
+
     # Register global search provider (closures capture query+type)
     Slim::Menu::GlobalSearch->registerInfoProvider( 'YouTube' => (
             after         => 'top',

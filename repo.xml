@@ -4,14 +4,14 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.68" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.69" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Fix YouTube extraction failures — switch to web_embedded player client which bypasses current YouTube bot detection. Auto-download Node.js 22 and yt-dlp-ejs on first startup for JS challenge support. No cookies or authentication required.</changes>
+      <changes lang="EN">Fix URL handler conflict with philippe44 plugin. Add Play All toolbar button support. Mac: use onedir yt-dlp for faster startup (avoids Gatekeeper rescan). Thanks to Paul Webster.</changes>
       <creator>schmij97</creator>
       <category>musicservices</category>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.68/YouTubeMusic-1.3.68.zip</url>
-      <sha>392782ba001477a66528a994698ae5744ded7f79</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.69/YouTubeMusic-1.3.69.zip</url>
+      <sha>ddbb7ff6163ff50039453ce71dbb267edbee3442</sha>
     </plugin>
   </plugins>
 </extensions>

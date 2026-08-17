@@ -931,7 +931,7 @@ def _platform_ytdlp_asset():
     if system == "windows":
         return "yt-dlp.exe", False
     if system == "darwin":
-        return "yt-dlp_macos", False
+        return "yt-dlp_macos.zip", True  # onedir version avoids Gatekeeper rescan on every run
     # Linux
     if machine in ("aarch64", "arm64"):
         return "yt-dlp_linux_aarch64", False
