@@ -62,6 +62,12 @@ sub initPlugin {
         weight => 10,
     );
 
+    # Register CLI handler for Jivelite/SB Radio playlist play
+    Slim::Control::Request::addDispatch(
+        ['youtubemusic', 'playlist', '_method'],
+        [1, 1, 1, \&_cliPlaylistCmd]
+    );
+
     if (main::WEBUI) {
         require Plugins::YouTubeMusic::Settings;
         Plugins::YouTubeMusic::Settings->new($class);
@@ -339,6 +345,108 @@ sub _globalSearch {
         $callback->({ items => $items });
     });
 }
+sub _cliPlaylistCmd {
+    my $request = shift;
+    my $client  = $request->client;
+    my $method  = $request->getParam('_method') || 'play';
+    my $item_id = $request->getParam('item_id') || $request->getParam('touchToPlay') || '';
+    my $touch   = $request->getParam('touchToPlay') || '';
+
+    $log->info("_cliPlaylistCmd: method=$method item_id=$item_id touchToPlay=$touch");
+
+    # Strip session ID prefix if present (e.g. "abc123.3.0" -> "3.0")
+    $item_id =~ s/^[a-f0-9\-]{8,}\.//;
+    $touch   =~ s/^[a-f0-9\-]{8,}\.//;
+
+    # Use touchToPlay for navigation if available (it has the full path)
+    my $nav_id = $touch || $item_id;
+
+    # Split into path components e.g. "3.0.0" -> (3, 0, 0)
+    my @path = split /\./, $nav_id;
+
+    $log->info("_cliPlaylistCmd: navigating path=" . join('.', @path));
+
+    # Get top-level feed
+    _top_level($client, sub {
+        my $feed = shift;
+        my $items = ref $feed eq 'HASH' ? $feed->{items} : $feed;
+        unless ($items && ref $items eq 'ARRAY') {
+            $log->warn("_cliPlaylistCmd: no top-level items");
+            $request->setStatusDone();
+            return;
+        }
+
+        # Navigate to the target item
+        my $level0_idx = $path[0];
+        my $item = $items->[$level0_idx];
+        unless ($item) {
+            $log->warn("_cliPlaylistCmd: no item at index $level0_idx");
+            $request->setStatusDone();
+            return;
+        }
+
+        $log->info("_cliPlaylistCmd: level0 item=" . ($item->{name} || 'unknown'));
+
+        # If path has more components, navigate deeper
+        if (scalar @path >= 2 && ref $item->{url} eq 'CODE') {
+            my $pt = $item->{passthrough} || [{}];
+            $item->{url}->($client, sub {
+                my $subfeed = shift;
+                my $subitems = ref $subfeed eq 'HASH' ? $subfeed->{items} : $subfeed;
+                unless ($subitems && ref $subitems eq 'ARRAY') {
+                    $request->setStatusDone();
+                    return;
+                }
+                my $level1_idx = $path[1];
+                my $subitem = $subitems->[$level1_idx];
+                unless ($subitem) {
+                    $log->warn("_cliPlaylistCmd: no item at index $level1_idx");
+                    $request->setStatusDone();
+                    return;
+                }
+                $log->info("_cliPlaylistCmd: level1 item=" . ($subitem->{name} || 'unknown'));
+
+                # Play the playlist URL
+                my $play_url = $subitem->{play} || $subitem->{url};
+                if ($play_url && !ref($play_url)) {
+                    $log->info("_cliPlaylistCmd: playing $play_url");
+                    if ($play_url =~ /^ytmplaylist:\/\//) {
+                        # Explode playlist then start from the right track index
+                        my $start_index = defined $path[2] ? $path[2] : 0;
+                        Plugins::YouTubeMusic::PlaylistProtocolHandler->explodePlaylist(
+                            $client, $play_url, sub {
+                                my $urls = shift;
+                                if ($urls && @$urls) {
+                                    if ($method eq 'play') {
+                                        $client->execute(['playlist', 'loadtracks', 'listref', $urls, undef, $start_index]);
+                                        $client->execute(['play']);
+                                    } else {
+                                        $client->execute(['playlist', 'addtracks', 'listref', $urls]);
+                                    }
+                                }
+                                $request->setStatusDone();
+                            }
+                        );
+                        return;
+                    } else {
+                        $client->execute(['playlist', $method, $play_url]);
+                    }
+                }
+                $request->setStatusDone();
+            }, {}, @{$pt});
+        } else {
+            my $play_url = $item->{play} || $item->{url};
+            if ($play_url && !ref($play_url)) {
+                $log->info("_cliPlaylistCmd: playing $play_url");
+                $client->execute(['playlist', $method, $play_url]);
+            }
+            $request->setStatusDone();
+        }
+    }, {});
+
+    $request->setStatusProcessing();
+}
+
 sub _on_playlist_stop {
     my $request = shift;
     my $client  = $request->client() or return;
@@ -521,6 +629,7 @@ sub _my_playlists_menu {
             name        => $name,
             url         => \&_playlist_menu,
             play        => "ytmplaylist://$browse_id",
+            playlist    => "ytmplaylist://$browse_id",
             type        => 'playlist',
             passthrough => [{ browseId => $browse_id, browse_type => 'playlist' }],
         };
@@ -636,7 +745,7 @@ sub _artist_menu {
 
 sub _playlist_menu {
     my ($client, $callback, $args, $params) = @_;
-    my $type = $params->{browse_type} // 'playlist';
+my $type = $params->{browse_type} // 'playlist';
 
     my $api_method = ($type eq 'album') ? 'browseAlbum' : 'browsePlaylist';
 

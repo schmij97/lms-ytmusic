@@ -21,6 +21,12 @@ my $log = Slim::Utils::Log->addLogCategory({
     description  => 'PLUGIN_YOUTUBEMUSIC',
 });
 
+sub isRemote { 1 }
+sub isPlaylist { 1 }
+sub canDirectStream { 0 }
+sub contentType { 'ytmplaylist' }
+sub getFormatForURL { 'ytmplaylist' }
+
 sub explodePlaylist {
     my ($class, $client, $uri, $callback) = @_;
 
