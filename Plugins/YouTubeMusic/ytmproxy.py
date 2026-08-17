@@ -816,7 +816,7 @@ _AUDIO_CODEC, _AUDIO_FORMAT, _AUDIO_MIME = _detect_audio_codec()
 PREFETCH_DIR = os.path.join(tempfile.gettempdir(), "ytmproxy_prefetch")
 _prefetch_started = set()
 _prefetch_lock = threading.Lock()
-_prefetch_semaphore = threading.Semaphore(2)  # Max 2 concurrent prefetch downloads
+_prefetch_semaphore = threading.Semaphore(1)  # Max 1 concurrent prefetch download (Node JS challenge is CPU-intensive on ARM)
 
 def _prefetch_paths(video_id):
     os.makedirs(PREFETCH_DIR, exist_ok=True)
