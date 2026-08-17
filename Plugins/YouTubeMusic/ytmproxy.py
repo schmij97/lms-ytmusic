@@ -1204,6 +1204,25 @@ def _install_ytdlp_ejs():
         logging.warning("Failed to install yt-dlp-ejs: %s", e)
         return False
 
+def _enable_preprocessed_player_cache():
+    """Enable preprocessed player caching in yt-dlp-ejs for faster subsequent extractions."""
+    try:
+        ejs_path = os.path.join(BIN_DIR, "yt_dlp", "extractor", "youtube", "jsc", "_builtin", "ejs.py")
+        if not os.path.exists(ejs_path):
+            return
+        with open(ejs_path, "r") as f:
+            content = f.read()
+        if "_ENABLE_PREPROCESSED_PLAYER_CACHE = False" in content:
+            content = content.replace(
+                "_ENABLE_PREPROCESSED_PLAYER_CACHE = False",
+                "_ENABLE_PREPROCESSED_PLAYER_CACHE = True"
+            )
+            with open(ejs_path, "w") as f:
+                f.write(content)
+            logging.info("Enabled preprocessed player cache in yt-dlp-ejs")
+    except Exception as e:
+        logging.warning("Could not enable preprocessed player cache: %s", e)
+
 def _find_ytdlp():
     # Check plugin directory first (no sudo needed, always found)
     if os.path.isfile(YTDLP_BIN) and os.access(YTDLP_BIN, os.X_OK):
@@ -1248,6 +1267,7 @@ def stream_audio(video_id):
         # node_path computed before cmd list to avoid calling _find_node() twice
         *(["--js-runtimes", f"node:{_NODE_PATH}"] if _NODE_PATH else ["--js-runtimes", "node"]),
         "--extractor-args", "youtube:player_client=web_embedded",
+        "--cache-dir", os.path.join(BIN_DIR, "ytdlp_cache"),
         "--add-header", "User-Agent:com.google.android.youtube/17.29.34",
         "-o", "-",
         url,
@@ -1673,6 +1693,10 @@ def run(port=9876, log_level="INFO", codec="auto"):
             logging.warning("yt-dlp auto-download error: %s", e)
     # Auto-install yt-dlp-ejs for JS challenge support
     _install_ytdlp_ejs()
+    # Create yt-dlp cache dir for preprocessed player cache
+    os.makedirs(os.path.join(BIN_DIR, "ytdlp_cache"), exist_ok=True)
+    # Enable preprocessed player cache in yt-dlp-ejs for faster subsequent extractions
+    _enable_preprocessed_player_cache()
     # Auto-download Node 22 if no suitable node found
     if not _find_node():
         logging.info("Node 22+ not found — attempting auto-download")
