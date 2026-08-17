@@ -142,9 +142,22 @@ sub _find_python {
     my $finder = $is_windows ? 'where' : 'which';
     # Check python3 first (Unix), then python, then py (Windows launcher)
     my @candidates = $is_windows ? qw(python3 python py) : qw(python3 python);
+    # On macOS, also check versioned binaries and common install paths
+    # to avoid picking up Xcode's old Python 3.9 stub
+    unless ($is_windows) {
+        unshift @candidates, qw(python3.13 python3.12 python3.11 python3.10);
+        push @candidates, '/usr/local/bin/python3', '/opt/homebrew/bin/python3',
+                          '/usr/local/opt/python3/bin/python3';
+    }
+    my $best_path = '';
+    my $best_ver  = 0;
     for my $py (@candidates) {
         my $null = $is_windows ? '2>nul' : '2>/dev/null';
-        my $path = `$finder $py $null`; chomp $path;
+        my $path = `$finder $py $null 2>/dev/null || echo $py`; chomp $path;
+        # For absolute paths, skip the finder call
+        if ($py =~ m{^/}) {
+            $path = $py;
+        }
         next unless defined $path && $path ne '';
         # "where" may return multiple lines — skip WindowsApps stub
         if ($is_windows) {
@@ -153,11 +166,21 @@ sub _find_python {
             $path = $real || $paths[0] || '';
         }
         $path =~ s/\r//g;  # strip carriage returns on any platform
-        next unless $path;
-        # On Windows, also try without -e check since path may have quotes
+        next unless $path && -e $path;
         $path =~ s/^"(.*)"$/$1/;  # strip surrounding quotes if any
-        return $path if -e $path;
+        # Check version — require 3.10+ for yt-dlp-ejs compatibility
+        my $ver_str = `"$path" -c "import sys; print(sys.version_info.major * 100 + sys.version_info.minor)" 2>/dev/null`;
+        chomp $ver_str;
+        my $ver = int($ver_str || 0);
+        if ($ver >= 310 && $ver > $best_ver) {
+            $best_ver  = $ver;
+            $best_path = $path;
+        } elsif ($ver > 0 && $best_ver == 0) {
+            # Accept any Python if nothing 3.10+ found yet
+            $best_path = $path;
+        }
     }
+    return $best_path if $best_path;
     # Last resort on Windows: check registry and common install paths
     if ($is_windows) {
         # Try registry first (works for all accounts including SYSTEM)
