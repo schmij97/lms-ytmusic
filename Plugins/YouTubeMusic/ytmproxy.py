@@ -1188,6 +1188,7 @@ def _install_ytdlp_ejs():
     ejs_marker = os.path.join(BIN_DIR, "yt_dlp_ejs")
     if os.path.exists(ejs_marker):
         return True
+    # Try pip first
     try:
         import subprocess
         result = subprocess.run(
@@ -1199,9 +1200,24 @@ def _install_ytdlp_ejs():
             logging.info("yt-dlp-ejs installed to %s", BIN_DIR)
             return True
         logging.warning("yt-dlp-ejs install failed: %s", result.stderr)
+    except Exception as e:
+        logging.warning("pip install failed: %s", e)
+    # Fallback: download wheel directly from PyPI
+    try:
+        import urllib.request, zipfile, io
+        wheel_url = "https://files.pythonhosted.org/packages/py3/y/yt_dlp_ejs/yt_dlp_ejs-0.8.0-py3-none-any.whl"
+        logging.info("Attempting direct wheel download for yt-dlp-ejs...")
+        with urllib.request.urlopen(wheel_url, timeout=60) as resp:
+            wheel_data = resp.read()
+        with zipfile.ZipFile(io.BytesIO(wheel_data)) as zf:
+            zf.extractall(BIN_DIR)
+        if os.path.exists(ejs_marker):
+            logging.info("yt-dlp-ejs installed via direct wheel download")
+            return True
+        logging.warning("yt-dlp-ejs wheel extraction did not produce expected directory")
         return False
     except Exception as e:
-        logging.warning("Failed to install yt-dlp-ejs: %s", e)
+        logging.warning("Failed to install yt-dlp-ejs via wheel: %s", e)
         return False
 
 _node_worker_proc = None

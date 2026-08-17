@@ -4,14 +4,14 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.74" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.75" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Fix settings page warnings: prefix form fields with pref_ as required by LMS. Thanks to Paul Webster.</changes>
+      <changes lang="EN">Fix yt-dlp-ejs install on systems without pip (piCorePlayer, NAS). Falls back to direct PyPI wheel download when pip is unavailable. Thanks to Paul Webster.</changes>
       <creator>schmij97</creator>
       <category>musicservices</category>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.74/YouTubeMusic-1.3.74.zip</url>
-      <sha>18967a5c5ce338f7d5bd52f78a62990eac5c0f37</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.75/YouTubeMusic-1.3.75.zip</url>
+      <sha>4a2f835fc762272e558b3088a4ff04b6aefcbf36</sha>
     </plugin>
   </plugins>
 </extensions>
