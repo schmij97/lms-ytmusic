@@ -1204,6 +1204,184 @@ def _install_ytdlp_ejs():
         logging.warning("Failed to install yt-dlp-ejs: %s", e)
         return False
 
+_node_worker_proc = None
+
+def _start_node_worker():
+    """Start the persistent Node worker process."""
+    global _node_worker_proc
+    node = _find_node()
+    if not node:
+        logging.warning("Node not found — persistent worker disabled")
+        return
+    worker_js = os.path.join(os.path.dirname(__file__), "yt-node-worker.js")
+    if not os.path.exists(worker_js):
+        logging.warning("yt-node-worker.js not found — persistent worker disabled")
+        return
+    sock_path = '/tmp/ytmproxy-node.sock'
+    if os.path.exists(sock_path):
+        os.remove(sock_path)
+    try:
+        _node_worker_proc = subprocess.Popen(
+            [node, worker_js, sock_path, BIN_DIR],
+            stdout=subprocess.DEVNULL,
+            stderr=open('/tmp/yt-node-worker.log', 'w'),
+        )
+        logging.info("Started Node worker PID=%d", _node_worker_proc.pid)
+    except Exception as e:
+        logging.warning("Failed to start Node worker: %s", e)
+
+# Persistent YoutubeDL instance — initialized once, reused for every extraction
+import threading as _threading
+_ydl_instance = None
+_ydl_lock = _threading.Lock()
+
+def _get_ydl():
+    """Get or create the persistent YoutubeDL instance."""
+    global _ydl_instance
+    with _ydl_lock:
+        if _ydl_instance is None:
+            try:
+                sys.path.insert(0, BIN_DIR)
+                import yt_dlp
+                node_path = _find_node()
+                js_runtimes = {'node': {'path': node_path}} if node_path else {'node': {}}
+                ydl_opts = {
+                    'format': 'bestaudio',
+                    'quiet': True,
+                    'no_warnings': True,
+                    'no_check_certificates': True,
+                    'socket_timeout': 10,
+                    'retries': 2,
+                    'extractor_retries': 2,
+                    'extractor_args': {'youtube': {'player_client': ['web_embedded']}},
+                    'cachedir': os.path.join(BIN_DIR, 'ytdlp_cache'),
+                    'js_runtimes': js_runtimes,
+                }
+                _ydl_instance = yt_dlp.YoutubeDL(ydl_opts)
+                logging.info("Persistent YoutubeDL instance created")
+            except Exception as e:
+                logging.warning("Failed to create persistent YoutubeDL: %s", e)
+                _ydl_instance = None
+    return _ydl_instance
+
+def _get_audio_url(video_id):
+    """Use persistent YoutubeDL to extract audio URL. Returns URL or None."""
+    try:
+        ydl = _get_ydl()
+        if ydl is None:
+            return None
+        url = f"https://music.youtube.com/watch?v={video_id}"
+        info = ydl.extract_info(url, download=False)
+        if not info:
+            return None
+        # Get the best audio URL
+        if 'url' in info:
+            return info['url']
+        # Try formats
+        formats = info.get('formats', [])
+        if formats:
+            return formats[-1].get('url')
+        return None
+    except Exception as e:
+        logging.warning("YDL extract failed for %s: %s", video_id, e)
+        return None
+
+def _compile_ytdlp_bytecode():
+    """Pre-compile yt-dlp Python source to .pyc bytecode for faster startup on slow ARM CPUs."""
+    ytdlp_dir = os.path.join(BIN_DIR, "yt_dlp")
+    marker = os.path.join(ytdlp_dir, ".compiled")
+    if not os.path.exists(ytdlp_dir) or os.path.exists(marker):
+        return
+    try:
+        import compileall
+        if compileall.compile_dir(ytdlp_dir, quiet=True, force=True):
+            with open(marker, "w") as f:
+                f.write("compiled\n")
+            logging.info("Pre-compiled yt-dlp Python bytecode for faster startup")
+    except Exception as e:
+        logging.warning("Could not pre-compile yt-dlp bytecode: %s", e)
+
+def _patch_node_provider():
+    """Patch yt-dlp node.py to use persistent Node worker for faster JS challenge solving."""
+    try:
+        node_path = os.path.join(BIN_DIR, "yt_dlp", "extractor", "youtube", "jsc", "_builtin", "node.py")
+        if not os.path.exists(node_path):
+            return
+        with open(node_path, "r") as f:
+            content = f.read()
+        if "_try_persistent_worker" in content:
+            return  # Already patched
+        new_method = (
+            "\n    def _try_persistent_worker(self, stdin: str):\n"
+            "        import socket as _socket, json as _json, hashlib as _hashlib, os as _os\n"
+            "        SOCK_PATH = '/tmp/ytmproxy-node.sock'\n"
+            "        if not _os.path.exists(SOCK_PATH):\n"
+            "            return None\n"
+            "        try:\n"
+            "            jsc_pos = stdin.rfind('console.log(JSON.stringify(jsc(')\n"
+            "            if jsc_pos < 0:\n"
+            "                return None\n"
+            "            arg_start = jsc_pos + len('console.log(JSON.stringify(jsc(')\n"
+            "            arg_end = stdin.rfind(')));')\n"
+            "            jsc_arg = _json.loads(stdin[arg_start:arg_end])\n"
+            "            if jsc_arg.get('type') != 'preprocessed':\n"
+            "                return None\n"
+            "            player_data = jsc_arg['preprocessed_player']\n"
+            "            player_version = _hashlib.md5(player_data[:2000].encode()).hexdigest()[:8]\n"
+            "            probe = _json.dumps({'player_version': player_version, 'probe': True}) + '\\n'\n"
+            "            sock = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)\n"
+            "            sock.settimeout(5.0)\n"
+            "            sock.connect(SOCK_PATH)\n"
+            "            sock.sendall(probe.encode())\n"
+            "            resp = b''\n"
+            "            while True:\n"
+            "                chunk = sock.recv(4096)\n"
+            "                if not chunk: break\n"
+            "                resp += chunk\n"
+            "                if b'\\n' in resp: break\n"
+            "            probe_result = _json.loads(resp.decode().strip())\n"
+            "            if probe_result.get('has_player'):\n"
+            "                req = _json.dumps({'player_version': player_version, 'requests': jsc_arg['requests']}) + '\\n'\n"
+            "            else:\n"
+            "                req = _json.dumps({'player_version': player_version, 'player_data': player_data, 'requests': jsc_arg['requests']}) + '\\n'\n"
+            "            sock.sendall(req.encode())\n"
+            "            response = b''\n"
+            "            while True:\n"
+            "                chunk = sock.recv(65536)\n"
+            "                if not chunk: break\n"
+            "                response += chunk\n"
+            "                if b'\\n' in response: break\n"
+            "            sock.close()\n"
+            "            result = _json.loads(response.decode().strip())\n"
+            "            if result.get('ok'):\n"
+            "                return _json.dumps(result['result'])\n"
+            "            return None\n"
+            "        except Exception as e:\n"
+            "            self.logger.debug(f'Persistent worker error: {e}')\n"
+            "            return None\n"
+        )
+        worker_call = (
+            "        # Try persistent Node worker first\n"
+            "        _worker_result = self._try_persistent_worker(stdin)\n"
+            "        if _worker_result is not None:\n"
+            "            return _worker_result\n"
+        )
+        content = content.replace(
+            "    def _run_js_runtime(self, stdin: str, /) -> str:",
+            new_method + "    def _run_js_runtime(self, stdin: str, /) -> str:"
+        )
+        content = content.replace(
+            "    def _run_js_runtime(self, stdin: str, /) -> str:\n        args = []",
+            "    def _run_js_runtime(self, stdin: str, /) -> str:\n" + worker_call + "        args = []"
+        )
+        with open(node_path, "w") as f:
+            f.write(content)
+        import py_compile
+        py_compile.compile(node_path, doraise=True)
+        logging.info("Patched node.py with persistent worker support")
+    except Exception as e:
+        logging.warning("Could not patch node provider: %s", e)
+
 def _enable_preprocessed_player_cache():
     """Enable preprocessed player caching in yt-dlp-ejs for faster subsequent extractions."""
     try:
@@ -1290,6 +1468,37 @@ def stream_audio(video_id):
         ffmpeg_cmd += ["-sample_fmt", "s16"]
     ffmpeg_cmd.append("pipe:1")
 
+    # Try persistent YDL first (faster — no subprocess startup)
+    import time as _time
+    _t0 = _time.monotonic()
+    audio_url = _get_audio_url(video_id)
+    _t1 = _time.monotonic()
+    logging.warning("PREFETCH_YDL videoId=%s extraction=%.2fs url=%s", video_id, _t1-_t0, "OK" if audio_url else "FAIL")
+    if audio_url:
+        ffmpeg_url_cmd = [
+            "ffmpeg", "-loglevel", "error",
+            "-i", audio_url,
+            "-vn", "-map_metadata", "-1",
+            "-id3v2_version", "0", "-write_id3v1", "0",
+            "-f", _AUDIO_FORMAT, "-codec:a", _AUDIO_CODEC,
+        ]
+        if _AUDIO_CODEC not in ("flac", "pcm_s16le"):
+            ffmpeg_url_cmd += ["-b:a", "192k"]
+        if _AUDIO_CODEC == "flac":
+            ffmpeg_url_cmd += ["-sample_fmt", "s16"]
+        ffmpeg_url_cmd.append("pipe:1")
+        ffmpeg_proc = subprocess.Popen(ffmpeg_url_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        try:
+            while True:
+                chunk = ffmpeg_proc.stdout.read(65536)
+                if not chunk:
+                    break
+                yield chunk
+        finally:
+            ffmpeg_proc.stdout.close()
+            ffmpeg_proc.wait()
+        return
+    logging.warning("Persistent YDL failed for %s, falling back to subprocess", video_id)
     logging.info("Streaming videoId=%s", video_id)
 
     ytdlp_proc = subprocess.Popen(
@@ -1697,6 +1906,10 @@ def run(port=9876, log_level="INFO", codec="auto"):
     os.makedirs(os.path.join(BIN_DIR, "ytdlp_cache"), exist_ok=True)
     # Enable preprocessed player cache in yt-dlp-ejs for faster subsequent extractions
     _enable_preprocessed_player_cache()
+    # Patch node.py to use persistent Node worker
+    _patch_node_provider()
+    # Pre-compile yt-dlp Python source to bytecode for faster startup on slow ARM CPUs
+    _compile_ytdlp_bytecode()
     # Auto-download Node 22 if no suitable node found
     if not _find_node():
         logging.info("Node 22+ not found — attempting auto-download")
@@ -1708,6 +1921,28 @@ def run(port=9876, log_level="INFO", codec="auto"):
                 logging.warning("Node.js auto-download failed: %s", msg)
         except Exception as e:
             logging.warning("Node.js auto-download error: %s", e)
+    # Start persistent Node worker for fast JS challenge solving
+    _start_node_worker()
+
+    # Pre-warm persistent YDL instance in background so first song starts faster
+    def _warmup_ydl():
+        import time as _t
+        _t.sleep(3)  # Wait for proxy to fully start
+        try:
+            logging.info("Pre-warming persistent YoutubeDL instance...")
+            t0 = _t.monotonic()
+            ydl = _get_ydl()
+            if ydl:
+                try:
+                    ydl.extract_info('https://music.youtube.com/watch?v=dQw4w9WgXcQ', download=False)
+                except Exception:
+                    pass
+                logging.info("YDL warmup complete in %.1fs", _t.monotonic() - t0)
+        except Exception as e:
+            logging.warning("YDL warmup failed: %s", e)
+    import threading as _wt
+    _wt.Thread(target=_warmup_ydl, daemon=True).start()
+
     server = ThreadingHTTPServer(("0.0.0.0", port), _Handler)
     logging.info("YTMusic proxy listening on 0.0.0.0:%d", port)
     server.serve_forever()
