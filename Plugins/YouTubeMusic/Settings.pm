@@ -30,9 +30,9 @@ sub handler {
         $prefs->set('proxy_port', $port);
 
         # Save autoplay setting
-        $prefs->set('autoplay', $params->{autoplay} ? 1 : 0);
+        $prefs->set('autoplay', ($params->{pref_autoplay} // $params->{autoplay}) ? 1 : 0);
         # Save codec setting
-        my $codec = $params->{codec} || 'auto';
+        my $codec = $params->{pref_codec} || $params->{codec} || 'auto';
         $codec = 'auto' unless grep { $_ eq $codec } qw(auto mp3 flac aac);
         $prefs->set('codec', $codec);
         # Save playlists — collect all name/browseId pairs
@@ -58,7 +58,9 @@ sub handler {
 
     $params->{my_playlists} = $prefs->get('my_playlists') || [];
     $params->{autoplay} = $prefs->get('autoplay') // 1;
+    $params->{pref_autoplay} = $params->{autoplay};
     $params->{codec} = $prefs->get('codec') || 'auto';
+    $params->{pref_codec} = $params->{codec};
 
     return $class->SUPER::handler($client, $params);
 }
