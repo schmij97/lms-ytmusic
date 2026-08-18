@@ -935,9 +935,10 @@ def _platform_ytdlp_asset():
     # Linux
     if machine in ("aarch64", "arm64"):
         return "yt-dlp_linux_aarch64", False
-    if machine in ("armv7l", "armv6l"):
-        # Note: yt-dlp dropped armv7l binary builds after Sept 2025
-        # Fall back to pip install for this platform
+    if machine == "armv7l":
+        return "yt-dlp_linux_armv7l.zip", True
+    if machine == "armv6l":
+        # No binary available for armv6l, fall back to pip
         return None, False
     if machine == "x86_64":
         return "yt-dlp_linux", False
@@ -1015,7 +1016,7 @@ def download_ytdlp():
             with zipfile.ZipFile(io.BytesIO(data)) as zf:
                 names = zf.namelist()
             bin_name = next(
-                (n for n in names if n.endswith("yt-dlp") and "/" not in n.rstrip("/")),
+                (n for n in names if (n.endswith("yt-dlp") or n.startswith("yt-dlp")) and "/" not in n.rstrip("/")),
                 None
             )
             if not bin_name:
