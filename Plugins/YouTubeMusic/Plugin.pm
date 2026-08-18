@@ -104,7 +104,11 @@ sub _start_proxy {
         return;
     }
 
-    my $python = _find_python();
+    my $python_override = $prefs->get('path_python') || '';
+    my $python = ($python_override && -f $python_override) ? $python_override : _find_python();
+    if ($python_override && !-f $python_override) {
+        $log->warn("Python override path not found: $python_override, falling back to auto-detect");
+    }
     unless ($python) {
         $log->error("python3 not found in PATH");
         return;
@@ -117,7 +121,11 @@ sub _start_proxy {
         # fork() is emulated on Windows via threads which conflicts with LMS
         # Use system(1,...) instead which spawns a true background process
         my $codec = $prefs->get('codec') || 'auto';
-        my $pid = system(1, $python, $script, '--port', $port, '--log-level', 'WARNING', '--codec', $codec);
+        my @win_args;
+        push @win_args, '--ytdlp',  $prefs->get('path_ytdlp')  if $prefs->get('path_ytdlp');
+        push @win_args, '--ffmpeg', $prefs->get('path_ffmpeg') if $prefs->get('path_ffmpeg');
+        push @win_args, '--node',   $prefs->get('path_node')   if $prefs->get('path_node');
+        my $pid = system(1, $python, $script, '--port', $port, '--log-level', 'WARNING', '--codec', $codec, @win_args);
         if (!$pid) {
             $log->error("system(1,...) failed: $!");
             return;
@@ -132,7 +140,11 @@ sub _start_proxy {
         }
         if ($pid == 0) {
             my $codec = $prefs->get('codec') || 'auto';
-            exec($python, $script, '--port', $port, '--log-level', 'WARNING', '--codec', $codec) or do {
+            my @extra_args;
+            push @extra_args, '--ytdlp',  $prefs->get('path_ytdlp')  if $prefs->get('path_ytdlp');
+            push @extra_args, '--ffmpeg', $prefs->get('path_ffmpeg') if $prefs->get('path_ffmpeg');
+            push @extra_args, '--node',   $prefs->get('path_node')   if $prefs->get('path_node');
+            exec($python, $script, '--port', $port, '--log-level', 'WARNING', '--codec', $codec, @extra_args) or do {
                 $log->error("exec failed: $!");
                 exit 1;
             };

@@ -18,7 +18,7 @@ sub name { 'PLUGIN_YOUTUBEMUSIC' }
 
 sub page { 'plugins/YouTubeMusic/settings/basic.html' }
 
-sub prefs { return ($prefs, qw(proxy_port autoplay codec)) }
+sub prefs { return ($prefs, qw(proxy_port autoplay codec path_python path_ytdlp path_ffmpeg path_node)) }
 
 sub handler {
     my ($class, $client, $params) = @_;
@@ -53,6 +53,11 @@ sub handler {
             }
         }
         $prefs->set('my_playlists', \@playlists);
+        # Save path overrides
+        $prefs->set('path_python', $params->{pref_path_python} // $params->{path_python} // '');
+        $prefs->set('path_ytdlp',  $params->{pref_path_ytdlp}  // $params->{path_ytdlp}  // '');
+        $prefs->set('path_ffmpeg', $params->{pref_path_ffmpeg} // $params->{path_ffmpeg} // '');
+        $prefs->set('path_node',   $params->{pref_path_node}   // $params->{path_node}   // '');
         $log->info("Saved " . scalar(@playlists) . " playlists");
     }
 
@@ -62,6 +67,10 @@ sub handler {
     $params->{codec} = $prefs->get('codec') || 'auto';
     $params->{pref_codec} = $params->{codec};
 
+    $params->{path_python} = $prefs->get('path_python') || '';
+    $params->{path_ytdlp}  = $prefs->get('path_ytdlp')  || '';
+    $params->{path_ffmpeg} = $prefs->get('path_ffmpeg') || '';
+    $params->{path_node}   = $prefs->get('path_node')   || '';
     return $class->SUPER::handler($client, $params);
 }
 

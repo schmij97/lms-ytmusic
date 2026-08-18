@@ -1094,6 +1094,9 @@ def _check_node_version(candidate):
         return False
 
 def _find_node():
+    _node_override = os.environ.get("YTM_NODE_OVERRIDE")
+    if _node_override and os.path.isfile(_node_override):
+        return _node_override
     """Find a suitable Node.js binary (v22+). Returns path or None."""
     # Check plugin's own node22 first
     if os.path.exists(NODE_BIN) and os.access(NODE_BIN, os.X_OK):
@@ -1430,6 +1433,9 @@ def _enable_preprocessed_player_cache():
         logging.warning("Could not enable preprocessed player cache: %s", e)
 
 def _find_ytdlp():
+    _ytdlp_override = os.environ.get("YTM_YTDLP_OVERRIDE")
+    if _ytdlp_override and os.path.isfile(_ytdlp_override):
+        return _ytdlp_override
     # Check plugin directory first (no sudo needed, always found)
     if os.path.isfile(YTDLP_BIN) and os.access(YTDLP_BIN, os.X_OK):
         return YTDLP_BIN
@@ -1504,7 +1510,7 @@ def stream_audio(video_id):
     logging.warning("PREFETCH_YDL videoId=%s extraction=%.2fs url=%s", video_id, _t1-_t0, "OK" if audio_url else "FAIL")
     if audio_url:
         ffmpeg_url_cmd = [
-            "ffmpeg", "-loglevel", "error",
+            os.environ.get("YTM_FFMPEG_OVERRIDE", "ffmpeg"), "-loglevel", "error",
             "-user_agent", "Mozilla/5.0 (Linux; Android 6.0; Nexus 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Mobile Safari/537.36",
             "-headers", "Accept: */*\r\nAccept-Language: en-us,en;q=0.5\r\n",
             "-i", audio_url,
@@ -1697,11 +1703,22 @@ class _Handler(BaseHTTPRequestHandler):
                 ytdlp = _find_ytdlp() or ''
                 ffmpeg_path = _shutil2.which("ffmpeg") or os.path.join(BIN_DIR, "ffmpeg.exe" if os.name == "nt" else "ffmpeg")
                 ffmpeg = ffmpeg_path if os.path.isfile(ffmpeg_path) else ''
+                # Validate override paths passed as query params
+                from urllib.parse import parse_qs as _parse_qs, urlparse as _urlparse2
+                _qs = _parse_qs(_urlparse2(self.path).query)
+                overrides = {
+                    'python': _qs.get('python', [''])[0],
+                    'ytdlp':  _qs.get('ytdlp',  [''])[0],
+                    'ffmpeg': _qs.get('ffmpeg', [''])[0],
+                    'node':   _qs.get('node',   [''])[0],
+                }
+                override_valid = {k: (os.path.isfile(v) if v else None) for k, v in overrides.items()}
                 self._send_json({
                     'python': python,
                     'ffmpeg': ffmpeg,
                     'ytdlp': ytdlp,
                     'node': node,
+                    'override_valid': override_valid,
                 })
 
             elif path == "/update_ytdlp":
@@ -2004,5 +2021,18 @@ if __name__ == "__main__":
     ap.add_argument("--port",      type=int, default=9876)
     ap.add_argument("--log-level", default="INFO")
     ap.add_argument("--codec",     default="auto", choices=["auto", "mp3", "flac", "aac"])
+    ap.add_argument("--ytdlp",     default="", help="Override path to yt-dlp binary")
+    ap.add_argument("--ffmpeg",    default="", help="Override path to ffmpeg binary")
+    ap.add_argument("--node",      default="", help="Override path to node binary")
     args = ap.parse_args()
+    # Apply path overrides before run()
+    if args.ytdlp and os.path.isfile(args.ytdlp):
+        os.environ['YTM_YTDLP_OVERRIDE'] = args.ytdlp
+        logging.info("yt-dlp path override: %s", args.ytdlp)
+    if args.ffmpeg and os.path.isfile(args.ffmpeg):
+        os.environ['YTM_FFMPEG_OVERRIDE'] = args.ffmpeg
+        logging.info("ffmpeg path override: %s", args.ffmpeg)
+    if args.node and os.path.isfile(args.node):
+        os.environ['YTM_NODE_OVERRIDE'] = args.node
+        logging.info("node path override: %s", args.node)
     run(args.port, args.log_level, args.codec)

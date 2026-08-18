@@ -194,29 +194,72 @@
     </script>
   [% END %]
 
-  [% WRAPPER setting title="Paths" desc="Paths to binaries discovered automatically. These are shown for diagnostic purposes. Leave override fields empty to use auto-detected paths." %]
-    <div id="pathsLoading">Loading paths...</div>
-    <table id="pathsTable" style="display:none;border-collapse:collapse;width:100%;">
+  [% WRAPPER setting title="Path Overrides" desc="Override auto-detected binary paths. Leave empty to use auto-detection. Useful when binaries are installed in non-standard locations. Restart LMS after saving." %]
+    <table style="border-collapse:collapse;width:100%;">
       <tr>
-        <th style="text-align:left;padding:4px 8px;">Binary</th>
-        <th style="text-align:left;padding:4px 8px;">Discovered Path</th>
-      </tr>
-      <tr>
-        <td style="padding:4px 8px;">Python</td>
-        <td style="padding:4px 8px;font-family:monospace;font-size:0.85em;" id="pathPython">-</td>
+        <td style="padding:4px 8px;width:80px;">Python</td>
+        <td style="padding:4px 8px;">
+          <input type="text" name="pref_path_python" id="override_python" value="[% path_python | html %]" style="width:400px;font-family:monospace;font-size:0.85em;" placeholder="e.g. C:\Python313\python.exe (leave empty for auto)" />
+          <span id="override_python_warn" style="color:red;font-size:0.85em;margin-left:6px;display:none;">&#9888; Path not found</span>
+        </td>
       </tr>
       <tr>
         <td style="padding:4px 8px;">yt-dlp</td>
-        <td style="padding:4px 8px;font-family:monospace;font-size:0.85em;" id="pathYtdlp">-</td>
+        <td style="padding:4px 8px;">
+          <input type="text" name="pref_path_ytdlp" id="override_ytdlp" value="[% path_ytdlp | html %]" style="width:400px;font-family:monospace;font-size:0.85em;" placeholder="e.g. C:\yt-dlp\yt-dlp.exe (leave empty for auto)" />
+          <span id="override_ytdlp_warn" style="color:red;font-size:0.85em;margin-left:6px;display:none;">&#9888; Path not found</span>
+        </td>
       </tr>
       <tr>
         <td style="padding:4px 8px;">ffmpeg</td>
-        <td style="padding:4px 8px;font-family:monospace;font-size:0.85em;" id="pathFfmpeg">-</td>
+        <td style="padding:4px 8px;">
+          <input type="text" name="pref_path_ffmpeg" id="override_ffmpeg" value="[% path_ffmpeg | html %]" style="width:400px;font-family:monospace;font-size:0.85em;" placeholder="e.g. C:\ffmpeg\ffmpeg.exe (leave empty for auto)" />
+          <span id="override_ffmpeg_warn" style="color:red;font-size:0.85em;margin-left:6px;display:none;">&#9888; Path not found</span>
+        </td>
       </tr>
       <tr>
         <td style="padding:4px 8px;">Node.js</td>
-        <td style="padding:4px 8px;font-family:monospace;font-size:0.85em;" id="pathNode">-</td>
+        <td style="padding:4px 8px;">
+          <input type="text" name="pref_path_node" id="override_node" value="[% path_node | html %]" style="width:400px;font-family:monospace;font-size:0.85em;" placeholder="e.g. C:\node\node.exe (leave empty for auto)" />
+          <span id="override_node_warn" style="color:red;font-size:0.85em;margin-left:6px;display:none;">&#9888; Path not found</span>
+        </td>
       </tr>
+    </table>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var params = new URLSearchParams({
+            python: document.getElementById('override_python').value,
+            ytdlp:  document.getElementById('override_ytdlp').value,
+            ffmpeg: document.getElementById('override_ffmpeg').value,
+            node:   document.getElementById('override_node').value
+        });
+        fetch('http://' + window.location.hostname + ':9876/paths?' + params.toString())
+            .then(r => r.json())
+            .then(d => {
+                var ov = d.override_valid || {};
+                var map = {python: 'override_python_warn', ytdlp: 'override_ytdlp_warn', ffmpeg: 'override_ffmpeg_warn', node: 'override_node_warn'};
+                for (var k in map) {
+                    if (ov[k] === false) {
+                        document.getElementById(map[k]).style.display = 'inline';
+                    }
+                }
+            })
+            .catch(function() {});
+    });
+    </script>
+  [% END %]
+
+  [% WRAPPER setting title="Discovered Paths" desc="Paths to binaries discovered automatically. Shown for diagnostic purposes." %]
+    <div id="pathsLoading">Loading discovered paths...</div>
+    <table id="pathsTable" style="display:none;border-collapse:collapse;width:100%;">
+      <tr>
+        <th style="text-align:left;padding:4px 8px;width:80px;">Binary</th>
+        <th style="text-align:left;padding:4px 8px;">Path</th>
+      </tr>
+      <tr><td style="padding:4px 8px;">Python</td><td style="padding:4px 8px;font-family:monospace;font-size:0.85em;" id="pathPython">-</td></tr>
+      <tr><td style="padding:4px 8px;">yt-dlp</td><td style="padding:4px 8px;font-family:monospace;font-size:0.85em;" id="pathYtdlp">-</td></tr>
+      <tr><td style="padding:4px 8px;">ffmpeg</td><td style="padding:4px 8px;font-family:monospace;font-size:0.85em;" id="pathFfmpeg">-</td></tr>
+      <tr><td style="padding:4px 8px;">Node.js</td><td style="padding:4px 8px;font-family:monospace;font-size:0.85em;" id="pathNode">-</td></tr>
     </table>
     <script>
     (function() {

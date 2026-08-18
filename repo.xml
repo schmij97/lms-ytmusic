@@ -4,14 +4,14 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.79" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.80" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Add Paths section to settings page showing discovered Python, yt-dlp, ffmpeg, and Node.js paths for diagnostics. Also adds ffmpeg stderr logging and fallback for Windows compatibility.</changes>
+      <changes lang="EN">Add path override fields to settings page for Python, yt-dlp, ffmpeg, and Node.js. Shows red warning when an override path doesn't exist. Useful for non-standard installs especially on Windows. Thanks to Paul Webster for the suggestion.</changes>
       <creator>schmij97</creator>
       <category>musicservices</category>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.79/YouTubeMusic-1.3.79.zip</url>
-      <sha>92f0daa1bdde01909b952665b4d89171beeea95c</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.80/YouTubeMusic-1.3.80.zip</url>
+      <sha>c4724766ef8731599f8b9d8f40a7d5ad2a34978c</sha>
     </plugin>
   </plugins>
 </extensions>
