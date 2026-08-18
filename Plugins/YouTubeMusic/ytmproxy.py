@@ -1690,6 +1690,20 @@ class _Handler(BaseHTTPRequestHandler):
                         self._send_json({"installed": True, "version": "unknown", "path": ffmpeg})
                 else:
                     self._send_json({"installed": False, "version": None, "path": None})
+            elif path == "/paths":
+                import shutil as _shutil2
+                node = _find_node() or ''
+                python = sys.executable or ''
+                ytdlp = _find_ytdlp() or ''
+                ffmpeg_path = _shutil2.which("ffmpeg") or os.path.join(BIN_DIR, "ffmpeg.exe" if os.name == "nt" else "ffmpeg")
+                ffmpeg = ffmpeg_path if os.path.isfile(ffmpeg_path) else ''
+                self._send_json({
+                    'python': python,
+                    'ffmpeg': ffmpeg,
+                    'ytdlp': ytdlp,
+                    'node': node,
+                })
+
             elif path == "/update_ytdlp":
                 try:
                     ytdlp = _find_ytdlp()

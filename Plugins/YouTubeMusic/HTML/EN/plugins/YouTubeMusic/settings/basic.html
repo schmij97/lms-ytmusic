@@ -194,4 +194,47 @@
     </script>
   [% END %]
 
+  [% WRAPPER setting title="Paths" desc="Paths to binaries discovered automatically. These are shown for diagnostic purposes. Leave override fields empty to use auto-detected paths." %]
+    <div id="pathsLoading">Loading paths...</div>
+    <table id="pathsTable" style="display:none;border-collapse:collapse;width:100%;">
+      <tr>
+        <th style="text-align:left;padding:4px 8px;">Binary</th>
+        <th style="text-align:left;padding:4px 8px;">Discovered Path</th>
+      </tr>
+      <tr>
+        <td style="padding:4px 8px;">Python</td>
+        <td style="padding:4px 8px;font-family:monospace;font-size:0.85em;" id="pathPython">-</td>
+      </tr>
+      <tr>
+        <td style="padding:4px 8px;">yt-dlp</td>
+        <td style="padding:4px 8px;font-family:monospace;font-size:0.85em;" id="pathYtdlp">-</td>
+      </tr>
+      <tr>
+        <td style="padding:4px 8px;">ffmpeg</td>
+        <td style="padding:4px 8px;font-family:monospace;font-size:0.85em;" id="pathFfmpeg">-</td>
+      </tr>
+      <tr>
+        <td style="padding:4px 8px;">Node.js</td>
+        <td style="padding:4px 8px;font-family:monospace;font-size:0.85em;" id="pathNode">-</td>
+      </tr>
+    </table>
+    <script>
+    (function() {
+        fetch('http://' + window.location.hostname + ':9876/paths')
+            .then(r => r.json())
+            .then(d => {
+                document.getElementById('pathsLoading').style.display = 'none';
+                document.getElementById('pathsTable').style.display = 'table';
+                document.getElementById('pathPython').textContent = d.python || '(not found)';
+                document.getElementById('pathYtdlp').textContent = d.ytdlp || '(not found)';
+                document.getElementById('pathFfmpeg').textContent = d.ffmpeg || '(not found)';
+                document.getElementById('pathNode').textContent = d.node || '(not found)';
+            })
+            .catch(function() {
+                document.getElementById('pathsLoading').textContent = 'Could not load paths (proxy not running?)';
+            });
+    })();
+    </script>
+  [% END %]
+
 [% PROCESS settings/footer.html %]
