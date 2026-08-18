@@ -1188,7 +1188,18 @@ def _install_ytdlp_ejs():
     """Install yt-dlp-ejs into BIN_DIR if not already present."""
     ejs_marker = os.path.join(BIN_DIR, "yt_dlp_ejs")
     if os.path.exists(ejs_marker):
-        return True
+        # Verify it's actually importable (Windows permission check)
+        try:
+            sys.path.insert(0, BIN_DIR)
+            import yt_dlp_ejs
+            return True
+        except ImportError:
+            logging.warning("yt_dlp_ejs directory exists but not importable, reinstalling")
+            import shutil
+            try:
+                shutil.rmtree(ejs_marker)
+            except Exception:
+                pass
     # Try pip first
     try:
         import subprocess
@@ -1494,6 +1505,8 @@ def stream_audio(video_id):
     if audio_url:
         ffmpeg_url_cmd = [
             "ffmpeg", "-loglevel", "error",
+            "-user_agent", "Mozilla/5.0 (Linux; Android 6.0; Nexus 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Mobile Safari/537.36",
+            "-headers", "Accept: */*\r\nAccept-Language: en-us,en;q=0.5\r\n",
             "-i", audio_url,
             "-vn", "-map_metadata", "-1",
             "-id3v2_version", "0", "-write_id3v1", "0",
@@ -1504,17 +1517,25 @@ def stream_audio(video_id):
         if _AUDIO_CODEC == "flac":
             ffmpeg_url_cmd += ["-sample_fmt", "s16"]
         ffmpeg_url_cmd.append("pipe:1")
-        ffmpeg_proc = subprocess.Popen(ffmpeg_url_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        ffmpeg_proc = subprocess.Popen(ffmpeg_url_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        bytes_sent = 0
         try:
             while True:
                 chunk = ffmpeg_proc.stdout.read(65536)
                 if not chunk:
                     break
+                bytes_sent += len(chunk)
                 yield chunk
         finally:
             ffmpeg_proc.stdout.close()
+            stderr_out = ffmpeg_proc.stderr.read().decode("utf-8", errors="replace").strip()
             ffmpeg_proc.wait()
-        return
+            if stderr_out:
+                logging.warning("ffmpeg URL stderr: %s", stderr_out[:500])
+        if bytes_sent > 0:
+            return
+        # Fallback: ffmpeg URL approach produced no output, try subprocess yt-dlp
+        logging.warning("ffmpeg URL produced 0 bytes for %s, falling back to subprocess", video_id)
     logging.warning("Persistent YDL failed for %s, falling back to subprocess", video_id)
     logging.info("Streaming videoId=%s", video_id)
 
