@@ -349,10 +349,17 @@ sub _cliPlaylistCmd {
     my $request = shift;
     my $client  = $request->client;
     my $method  = $request->getParam('_method') || 'play';
-    my $item_id = $request->getParam('item_id') || $request->getParam('touchToPlay') || '';
+    my $item_id = $request->getParam('item_id') || '';
     my $touch   = $request->getParam('touchToPlay') || '';
 
     $log->info("_cliPlaylistCmd: method=$method item_id=$item_id touchToPlay=$touch");
+
+    # Only handle touchToPlay requests from Jivelite/SB Radio/SqueezePlay
+    # For normal Material skin play commands, delegate to XMLBrowser
+    unless ($touch) {
+        Slim::Control::XMLBrowser::cliQuery('youtubemusic', Plugins::YouTubeMusic::Plugin->feed($request->client), $request);
+        return;
+    }
 
     # Strip session ID prefix if present (e.g. "abc123.3.0" -> "3.0")
     $item_id =~ s/^[a-f0-9\-]{8,}\.//;

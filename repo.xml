@@ -4,14 +4,14 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.77" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.78" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Fix yt-dlp auto-download on ARMv7 (Raspberry Pi 2/3 32-bit). Use the official yt-dlp_linux_armv7l.zip package instead of pip install.</changes>
+      <changes lang="EN">Fix playlist playback from Jivelite/SB Radio/SqueezePlay without breaking Material skin browsing and playback.</changes>
       <creator>schmij97</creator>
       <category>musicservices</category>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.77/YouTubeMusic-1.3.77.zip</url>
-      <sha>675c5549c86ce9433ed39442893eb21a42d48a64</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.78/YouTubeMusic-1.3.78.zip</url>
+      <sha>9b9c9f328c7b8dafe3b0b1c66320275c76ef6ad3</sha>
     </plugin>
   </plugins>
 </extensions>
