@@ -1103,7 +1103,32 @@ def _find_node():
         if _check_node_version(NODE_BIN):
             return NODE_BIN
     # Check system node
-    for candidate in ["/usr/bin/node", "/usr/local/bin/node", shutil.which("node")]:
+    win_candidates = []
+    if os.name == 'nt':
+        # Common Windows Node.js install locations
+        for drive in ['C', 'D', 'E']:
+            win_candidates += [
+                f"{drive}:\Program Files\nodejs\node.exe",
+                f"{drive}:\Program Files (x86)\nodejs\node.exe",
+            ]
+        # Per-user installs
+        appdata = os.environ.get('APPDATA', '')
+        localappdata = os.environ.get('LOCALAPPDATA', '')
+        if appdata:
+            win_candidates.append(os.path.join(appdata, 'nvm', 'current', 'node.exe'))
+        if localappdata:
+            win_candidates.append(os.path.join(localappdata, 'Programs', 'node', 'node.exe'))
+        # Scan all user profiles
+        for drive in ['C', 'D']:
+            users_dir = drive + ':\\Users'
+            if os.path.isdir(users_dir):
+                try:
+                    for user in os.listdir(users_dir):
+                        win_candidates.append(users_dir + '\\' + user + '\\AppData\\Roaming\\nvm\\current\\node.exe')
+                        win_candidates.append(users_dir + '\\' + user + '\\AppData\\Local\\Programs\\node\\node.exe')
+                except Exception:
+                    pass
+    for candidate in ["/usr/bin/node", "/usr/local/bin/node", shutil.which("node")] + win_candidates:
         if candidate and os.path.exists(candidate):
             try:
                 result = subprocess.run([candidate, "--version"], capture_output=True, text=True, timeout=5)
