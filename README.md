@@ -141,9 +141,15 @@ and restart LMS again.
 
 ## Configuration
 
-In LMS, go to **Settings → Advanced → YouTube Music** to change the local
-proxy port (default `9876`) if it conflicts with something else on your
-system.
+In LMS, go to **Settings → Advanced → YouTube Music** to configure the plugin.
+
+### Path Overrides
+The settings page shows auto-discovered paths for Python, yt-dlp, ffmpeg, and Node.js under **Discovered Paths**. If a binary isn't being found automatically (common on Windows when LMS runs as a service), you can specify exact paths in the **Path Overrides** section.
+
+> **Note:** The red "Path not found" warning next to an override field requires the proxy to be running. If the proxy isn't starting due to a bad path, enter the correct path, save, and restart LMS — the warning will appear on the next page load once the proxy is running.
+
+### Proxy Port
+Change the local proxy port (default `9876`) if it conflicts with something else on your system.
 
 ## My Playlists
 
