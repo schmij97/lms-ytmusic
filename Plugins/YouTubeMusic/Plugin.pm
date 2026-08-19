@@ -122,9 +122,10 @@ sub _start_proxy {
         # Use system(1,...) instead which spawns a true background process
         my $codec = $prefs->get('codec') || 'auto';
         my @win_args;
-        push @win_args, '--ytdlp',  $prefs->get('path_ytdlp')  if $prefs->get('path_ytdlp');
-        push @win_args, '--ffmpeg', $prefs->get('path_ffmpeg') if $prefs->get('path_ffmpeg');
-        push @win_args, '--node',   $prefs->get('path_node')   if $prefs->get('path_node');
+        push @win_args, '--ytdlp',    $prefs->get('path_ytdlp')  if $prefs->get('path_ytdlp');
+        push @win_args, '--ffmpeg',   $prefs->get('path_ffmpeg') if $prefs->get('path_ffmpeg');
+        push @win_args, '--node',     $prefs->get('path_node')   if $prefs->get('path_node');
+        push @win_args, '--log-file', $prefs->get('log_path')    if $prefs->get('log_path');
         my $pid = system(1, $python, $script, '--port', $port, '--log-level', 'WARNING', '--codec', $codec, @win_args);
         if (!$pid) {
             $log->error("system(1,...) failed: $!");
@@ -141,9 +142,10 @@ sub _start_proxy {
         if ($pid == 0) {
             my $codec = $prefs->get('codec') || 'auto';
             my @extra_args;
-            push @extra_args, '--ytdlp',  $prefs->get('path_ytdlp')  if $prefs->get('path_ytdlp');
-            push @extra_args, '--ffmpeg', $prefs->get('path_ffmpeg') if $prefs->get('path_ffmpeg');
-            push @extra_args, '--node',   $prefs->get('path_node')   if $prefs->get('path_node');
+            push @extra_args, '--ytdlp',    $prefs->get('path_ytdlp')  if $prefs->get('path_ytdlp');
+            push @extra_args, '--ffmpeg',   $prefs->get('path_ffmpeg') if $prefs->get('path_ffmpeg');
+            push @extra_args, '--node',     $prefs->get('path_node')   if $prefs->get('path_node');
+            push @extra_args, '--log-file', $prefs->get('log_path')    if $prefs->get('log_path');
             exec($python, $script, '--port', $port, '--log-level', 'WARNING', '--codec', $codec, @extra_args) or do {
                 $log->error("exec failed: $!");
                 exit 1;

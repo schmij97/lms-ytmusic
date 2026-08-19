@@ -789,7 +789,7 @@ def get_song_info(video_id):
 def _detect_audio_codec():
     try:
         result = subprocess.run(
-            ["ffmpeg", "-encoders", "-v", "quiet"],
+            [_find_ffmpeg(), "-encoders", "-v", "quiet"],
             capture_output=True, text=True, timeout=10
         )
         output = result.stdout + result.stderr
@@ -1140,6 +1140,26 @@ def _find_node():
                 pass
     return None
 
+def _find_ffmpeg():
+    """Find ffmpeg binary, respecting override environment variable."""
+    override = os.environ.get('YTM_FFMPEG_OVERRIDE')
+    if override and os.path.isfile(override):
+        return override
+    # Check plugin Bin directory first
+    bin_ffmpeg = os.path.join(BIN_DIR, 'ffmpeg.exe' if os.name == 'nt' else 'ffmpeg')
+    if os.path.isfile(bin_ffmpeg):
+        return bin_ffmpeg
+    # Check common paths
+    for candidate in [
+        shutil.which('ffmpeg'),
+        '/usr/bin/ffmpeg',
+        '/usr/local/bin/ffmpeg',
+        '/opt/homebrew/bin/ffmpeg',
+    ]:
+        if candidate and os.path.isfile(candidate):
+            return candidate
+    return 'ffmpeg'  # fallback, may fail
+
 def _platform_node_asset():
     """Return (filename, url_template) for the Node 22 ARMv7/x64/arm64 binary."""
     import platform as _platform
@@ -1274,8 +1294,30 @@ def _start_node_worker():
         logging.warning("yt-node-worker.js not found — persistent worker disabled")
         return
     sock_path = '/tmp/ytmproxy-node.sock'
-    if os.path.exists(sock_path):
-        os.remove(sock_path)
+    # Kill any existing node worker processes to avoid accumulation
+    try:
+        import signal as _signal
+        result = subprocess.run(
+            ['pgrep', '-f', 'yt-node-worker.js'],
+            capture_output=True, text=True
+        )
+        for pid_str in result.stdout.strip().split():
+            try:
+                os.kill(int(pid_str), _signal.SIGTERM)
+                logging.info("Killed old Node worker PID=%s", pid_str)
+            except Exception:
+                pass
+    except Exception:
+        pass
+    # Remove stale socket
+    try:
+        if os.path.exists(sock_path):
+            os.remove(sock_path)
+    except Exception:
+        try:
+            subprocess.run(['rm', '-f', sock_path])
+        except Exception:
+            pass
     try:
         _node_worker_proc = subprocess.Popen(
             [node, worker_js, sock_path, BIN_DIR],
@@ -1511,7 +1553,7 @@ def stream_audio(video_id):
     ]
 
     ffmpeg_cmd = [
-        "ffmpeg",
+        _find_ffmpeg(),
         "-loglevel", "error",
         "-i", "pipe:0",
         "-vn",
@@ -1535,7 +1577,7 @@ def stream_audio(video_id):
     logging.warning("PREFETCH_YDL videoId=%s extraction=%.2fs url=%s", video_id, _t1-_t0, "OK" if audio_url else "FAIL")
     if audio_url:
         ffmpeg_url_cmd = [
-            os.environ.get("YTM_FFMPEG_OVERRIDE", "ffmpeg"), "-loglevel", "error",
+            _find_ffmpeg(), "-loglevel", "error",
             "-user_agent", "Mozilla/5.0 (Linux; Android 6.0; Nexus 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Mobile Safari/537.36",
             "-headers", "Accept: */*\r\nAccept-Language: en-us,en;q=0.5\r\n",
             "-i", audio_url,
@@ -1738,11 +1780,19 @@ class _Handler(BaseHTTPRequestHandler):
                     'node':   _qs.get('node',   [''])[0],
                 }
                 override_valid = {k: (os.path.isfile(v) if v else None) for k, v in overrides.items()}
+                # Find current log file
+                import logging as _logging
+                log_file_path = ''
+                for handler in _logging.root.handlers:
+                    if hasattr(handler, 'baseFilename'):
+                        log_file_path = handler.baseFilename
+                        break
                 self._send_json({
                     'python': python,
                     'ffmpeg': ffmpeg,
                     'ytdlp': ytdlp,
                     'node': node,
+                    'log_file': log_file_path,
                     'override_valid': override_valid,
                 })
 
@@ -1967,7 +2017,7 @@ class _Handler(BaseHTTPRequestHandler):
             logging.exception("Proxy error on %s", self.path)
             self._error("Internal proxy error", 500)
 
-def run(port=9876, log_level="INFO", codec="auto"):
+def run(port=9876, log_level="INFO", codec="auto", log_file=""):
     global _AUDIO_CODEC, _AUDIO_FORMAT, _AUDIO_MIME
     if codec == "mp3":
         _AUDIO_CODEC, _AUDIO_FORMAT, _AUDIO_MIME = "libmp3lame", "mp3", "audio/mpeg"
@@ -1977,12 +2027,21 @@ def run(port=9876, log_level="INFO", codec="auto"):
         _AUDIO_CODEC, _AUDIO_FORMAT, _AUDIO_MIME = "aac", "adts", "audio/aac"
     if codec != "auto":
         logging.info("Codec overridden to: %s", codec)
+    log_file = log_file or os.path.join(BIN_DIR, 'ytmproxy.log')
+    handlers = [logging.StreamHandler(sys.stderr)]
+    try:
+        fh = logging.FileHandler(log_file, encoding='utf-8')
+        fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+        handlers.append(fh)
+    except Exception:
+        pass
     logging.basicConfig(
         level=getattr(logging, log_level.upper(), logging.INFO),
         format="%(asctime)s [%(levelname)s] %(message)s",
-        stream=sys.stderr,
+        handlers=handlers,
         force=True,
     )
+    logging.info("ytmproxy log file: %s", log_file)
     # Auto-download yt-dlp on first startup if not already installed
     if not _find_ytdlp():
         logging.info("yt-dlp not found — attempting auto-download")
@@ -2049,6 +2108,7 @@ if __name__ == "__main__":
     ap.add_argument("--ytdlp",     default="", help="Override path to yt-dlp binary")
     ap.add_argument("--ffmpeg",    default="", help="Override path to ffmpeg binary")
     ap.add_argument("--node",      default="", help="Override path to node binary")
+    ap.add_argument("--log-file",  default="", help="Path to log file (default: BIN_DIR/ytmproxy.log)")
     args = ap.parse_args()
     # Apply path overrides before run()
     if args.ytdlp and os.path.isfile(args.ytdlp):
@@ -2060,4 +2120,4 @@ if __name__ == "__main__":
     if args.node and os.path.isfile(args.node):
         os.environ['YTM_NODE_OVERRIDE'] = args.node
         logging.info("node path override: %s", args.node)
-    run(args.port, args.log_level, args.codec)
+    run(args.port, args.log_level, args.codec, args.log_file)

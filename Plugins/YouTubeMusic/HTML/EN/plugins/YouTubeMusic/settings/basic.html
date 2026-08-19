@@ -194,6 +194,36 @@
     </script>
   [% END %]
 
+  [% WRAPPER setting title="Logging" desc="Configure proxy logging. The proxy log is useful for diagnosing playback issues. Leave the log path empty to use the default location (YouTubeMusic/Bin/ytmproxy.log in the LMS cache folder). piCorePlayer users can set the path to /var/log/pcp_ytmproxy.log to make it available in the pCP Diagnostics/Logs interface." %]
+    <table style="border-collapse:collapse;width:100%;">
+      <tr>
+        <td style="padding:4px 8px;width:120px;">Log file path</td>
+        <td style="padding:4px 8px;">
+          <input type="text" name="pref_log_path" value="[% log_path | html %]" style="width:400px;font-family:monospace;font-size:0.85em;" placeholder="Leave empty for default (BIN_DIR/ytmproxy.log)" />
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:4px 8px;">Current log</td>
+        <td style="padding:4px 8px;">
+          <div id="logPathDisplay" style="font-family:monospace;font-size:0.85em;color:#666;">Loading...</div>
+        </td>
+      </tr>
+    </table>
+    <script>
+    (function() {
+        fetch('http://' + window.location.hostname + ':9876/paths')
+            .then(r => r.json())
+            .then(d => {
+                var el = document.getElementById('logPathDisplay');
+                el.textContent = d.log_file || '(unknown)';
+            })
+            .catch(function() {
+                document.getElementById('logPathDisplay').textContent = '(proxy not running)';
+            });
+    })();
+    </script>
+  [% END %]
+
   [% WRAPPER setting title="Path Overrides" desc="Override auto-detected binary paths. Leave empty to use auto-detection. Useful when binaries are installed in non-standard locations. Restart LMS after saving." %]
     <table style="border-collapse:collapse;width:100%;">
       <tr>
