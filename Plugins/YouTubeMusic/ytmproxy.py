@@ -1630,7 +1630,10 @@ def stream_audio(video_id):
             return
         # Fallback: ffmpeg URL approach produced no output, try subprocess yt-dlp
         logging.warning("ffmpeg URL produced 0 bytes for %s, falling back to subprocess", video_id)
-    logging.warning("Persistent YDL failed for %s, falling back to subprocess", video_id)
+    if _ydl_available is not False:
+        logging.warning("Persistent YDL failed for %s, falling back to subprocess", video_id)
+    else:
+        logging.info("Persistent YDL not available for %s, using subprocess", video_id)
     logging.info("Streaming videoId=%s", video_id)
 
     ytdlp_proc = subprocess.Popen(
