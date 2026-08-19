@@ -1348,6 +1348,12 @@ def _get_ydl():
             try:
                 if BIN_DIR not in sys.path:
                     sys.path.insert(0, BIN_DIR)
+                # Check if yt_dlp Python package is available before importing
+                # (standalone yt-dlp binary doesn't provide the Python package)
+                import importlib.util as _ilu
+                if _ilu.find_spec("yt_dlp") is None:
+                    logging.info("yt_dlp Python package not available (standalone binary?), persistent YDL disabled")
+                    return None
                 import yt_dlp
                 node_path = _find_node()
                 js_runtimes = {'node': {'path': node_path}} if node_path else {'node': {}}

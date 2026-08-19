@@ -4,14 +4,14 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.85" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.86" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Fix audio codec auto-detection on piCorePlayer and systems where ffmpeg lacks MP3 support. Codec detection now runs after ffmpeg path is resolved. Fix persistent YoutubeDL failing to find yt_dlp module on some systems. Thanks to CJS.</changes>
+      <changes lang="EN">Fix spurious WARNING log message on piCorePlayer and systems using standalone yt-dlp binary. Persistent YoutubeDL now gracefully detects when the yt_dlp Python package is unavailable and silently falls back to subprocess without logging a warning.</changes>
       <creator>schmij97</creator>
       <category>musicservices</category>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.85/YouTubeMusic-1.3.85.zip</url>
-      <sha>163f56a4a44e728ed06838da11f6f3a93ecf6051</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.86/YouTubeMusic-1.3.86.zip</url>
+      <sha>6760968bdd9e414fd28b37d8fcba64dd98c4ba4b</sha>
     </plugin>
   </plugins>
 </extensions>
