@@ -1293,20 +1293,27 @@ def _start_node_worker():
     if not os.path.exists(worker_js):
         logging.warning("yt-node-worker.js not found — persistent worker disabled")
         return
-    sock_path = '/tmp/ytmproxy-node.sock'
+    sock_path = os.path.join(tempfile.gettempdir(), 'ytmproxy-node.sock')
     # Kill any existing node worker processes to avoid accumulation
     try:
         import signal as _signal
-        result = subprocess.run(
-            ['pgrep', '-f', 'yt-node-worker.js'],
-            capture_output=True, text=True
-        )
-        for pid_str in result.stdout.strip().split():
-            try:
-                os.kill(int(pid_str), _signal.SIGTERM)
-                logging.info("Killed old Node worker PID=%s", pid_str)
-            except Exception:
-                pass
+        if os.name == 'nt':
+            # Windows: use taskkill
+            subprocess.run(
+                ['taskkill', '/F', '/IM', 'node.exe', '/FI', 'WINDOWTITLE eq yt-node-worker*'],
+                capture_output=True
+            )
+        else:
+            result = subprocess.run(
+                ['pgrep', '-f', 'node.*yt-node-worker.js'],
+                capture_output=True, text=True
+            )
+            for pid_str in result.stdout.strip().split():
+                try:
+                    os.kill(int(pid_str), _signal.SIGTERM)
+                    logging.info("Killed old Node worker PID=%s", pid_str)
+                except Exception:
+                    pass
     except Exception:
         pass
     # Remove stale socket
@@ -1322,7 +1329,7 @@ def _start_node_worker():
         _node_worker_proc = subprocess.Popen(
             [node, worker_js, sock_path, BIN_DIR],
             stdout=subprocess.DEVNULL,
-            stderr=open('/tmp/yt-node-worker.log', 'w'),
+            stderr=open(os.path.join(tempfile.gettempdir(), 'yt-node-worker.log'), 'w'),
         )
         logging.info("Started Node worker PID=%d", _node_worker_proc.pid)
     except Exception as e:
@@ -1412,7 +1419,7 @@ def _patch_node_provider():
         new_method = (
             "\n    def _try_persistent_worker(self, stdin: str):\n"
             "        import socket as _socket, json as _json, hashlib as _hashlib, os as _os\n"
-            "        SOCK_PATH = '/tmp/ytmproxy-node.sock'\n"
+            "        SOCK_PATH = __import__('os').path.join(__import__('tempfile').gettempdir(), 'ytmproxy-node.sock')\n"
             "        if not _os.path.exists(SOCK_PATH):\n"
             "            return None\n"
             "        try:\n"

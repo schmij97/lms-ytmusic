@@ -3,8 +3,13 @@ const vm = require('vm');
 const fs = require('fs');
 const path = require('path');
 
-const SOCK_PATH = process.argv[2] || '/tmp/ytmproxy-node.sock';
+const SOCK_PATH = process.argv[2]; // path passed from ytmproxy
 const BIN_DIR = process.argv[3] || null;
+
+if (!SOCK_PATH) {
+    process.stderr.write('ERROR: socket path required as first argument\n');
+    process.exit(1);
+}
 
 if (!BIN_DIR) {
     process.stderr.write('ERROR: BIN_DIR required as argument\n');
