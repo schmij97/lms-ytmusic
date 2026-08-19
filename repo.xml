@@ -4,14 +4,14 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.84" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.85" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Fix Node worker cleanup: safer pgrep regex includes node in pattern, Windows fallback using taskkill. Replace hardcoded /tmp paths with tempfile.gettempdir() for cross-platform compatibility. Thanks to Paul Webster.</changes>
+      <changes lang="EN">Fix audio codec auto-detection on piCorePlayer and systems where ffmpeg lacks MP3 support. Codec detection now runs after ffmpeg path is resolved. Fix persistent YoutubeDL failing to find yt_dlp module on some systems. Thanks to CJS.</changes>
       <creator>schmij97</creator>
       <category>musicservices</category>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.84/YouTubeMusic-1.3.84.zip</url>
-      <sha>958f191b23820740eb6035366c4700e264d8d62c</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.85/YouTubeMusic-1.3.85.zip</url>
+      <sha>163f56a4a44e728ed06838da11f6f3a93ecf6051</sha>
     </plugin>
   </plugins>
 </extensions>

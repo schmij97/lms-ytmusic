@@ -1346,7 +1346,8 @@ def _get_ydl():
     with _ydl_lock:
         if _ydl_instance is None:
             try:
-                sys.path.insert(0, BIN_DIR)
+                if BIN_DIR not in sys.path:
+                    sys.path.insert(0, BIN_DIR)
                 import yt_dlp
                 node_path = _find_node()
                 js_runtimes = {'node': {'path': node_path}} if node_path else {'node': {}}
@@ -2032,8 +2033,13 @@ def run(port=9876, log_level="INFO", codec="auto", log_file=""):
         _AUDIO_CODEC, _AUDIO_FORMAT, _AUDIO_MIME = "flac", "flac", "audio/flac"
     elif codec == "aac":
         _AUDIO_CODEC, _AUDIO_FORMAT, _AUDIO_MIME = "aac", "adts", "audio/aac"
+    else:
+        # Re-run auto-detection now that ffmpeg override may be set
+        _AUDIO_CODEC, _AUDIO_FORMAT, _AUDIO_MIME = _detect_audio_codec()
     if codec != "auto":
         logging.info("Codec overridden to: %s", codec)
+    else:
+        logging.info("Codec auto-detected: %s", _AUDIO_CODEC)
     log_file = log_file or os.path.join(BIN_DIR, 'ytmproxy.log')
     handlers = [logging.StreamHandler(sys.stderr)]
     try:
