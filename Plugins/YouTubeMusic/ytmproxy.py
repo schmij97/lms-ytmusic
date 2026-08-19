@@ -1339,20 +1339,25 @@ def _start_node_worker():
 import threading as _threading
 _ydl_instance = None
 _ydl_lock = _threading.Lock()
+_ydl_available = None  # None=unknown, True=available, False=not available
 
 def _get_ydl():
     """Get or create the persistent YoutubeDL instance."""
-    global _ydl_instance
+    global _ydl_instance, _ydl_available
+    if _ydl_available is False:
+        return None
     with _ydl_lock:
         if _ydl_instance is None:
             try:
                 if BIN_DIR not in sys.path:
                     sys.path.insert(0, BIN_DIR)
-                # Check if yt_dlp Python package is available before importing
+                # Check if yt_dlp Python package is actually importable
                 # (standalone yt-dlp binary doesn't provide the Python package)
-                import importlib.util as _ilu
-                if _ilu.find_spec("yt_dlp") is None:
-                    logging.info("yt_dlp Python package not available (standalone binary?), persistent YDL disabled")
+                try:
+                    import yt_dlp as _yt_dlp_test
+                except ImportError:
+                    _ydl_available = False
+                    logging.info("yt_dlp Python package not available (standalone binary install), persistent YDL disabled")
                     return None
                 import yt_dlp
                 node_path = _find_node()
@@ -1370,6 +1375,7 @@ def _get_ydl():
                     'js_runtimes': js_runtimes,
                 }
                 _ydl_instance = yt_dlp.YoutubeDL(ydl_opts)
+                _ydl_available = True
                 logging.info("Persistent YoutubeDL instance created")
             except Exception as e:
                 logging.warning("Failed to create persistent YoutubeDL: %s", e)
@@ -1588,7 +1594,8 @@ def stream_audio(video_id):
     _t0 = _time.monotonic()
     audio_url = _get_audio_url(video_id)
     _t1 = _time.monotonic()
-    logging.warning("PREFETCH_YDL videoId=%s extraction=%.2fs url=%s", video_id, _t1-_t0, "OK" if audio_url else "FAIL")
+    _log_fn = logging.warning if audio_url else (logging.info if _ydl_available is False else logging.warning)
+    _log_fn("PREFETCH_YDL videoId=%s extraction=%.2fs url=%s", video_id, _t1-_t0, "OK" if audio_url else "FAIL")
     if audio_url:
         ffmpeg_url_cmd = [
             _find_ffmpeg(), "-loglevel", "error",

@@ -4,14 +4,14 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.86" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.87" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Fix spurious WARNING log message on piCorePlayer and systems using standalone yt-dlp binary. Persistent YoutubeDL now gracefully detects when the yt_dlp Python package is unavailable and silently falls back to subprocess without logging a warning.</changes>
+      <changes lang="EN">Eliminate spurious WARNING log entries on piCorePlayer and standalone yt-dlp installs. Once persistent YDL is detected as unavailable, subsequent attempts are skipped silently and logged at INFO level instead of WARNING. Playback via subprocess fallback is unaffected.</changes>
       <creator>schmij97</creator>
       <category>musicservices</category>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.86/YouTubeMusic-1.3.86.zip</url>
-      <sha>6760968bdd9e414fd28b37d8fcba64dd98c4ba4b</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.87/YouTubeMusic-1.3.87.zip</url>
+      <sha>ed136b6b6efd9ee2590e3334789c46b689a813b0</sha>
     </plugin>
   </plugins>
 </extensions>
