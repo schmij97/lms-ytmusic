@@ -4,14 +4,14 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.82" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.83" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Fix multiple Node worker processes accumulating on restart. Fix ffmpeg path inconsistency - all ffmpeg calls now respect the path override. Add proxy log file (BIN_DIR/ytmproxy.log) with configurable path in settings. piCorePlayer users can set path to /var/log/pcp_ytmproxy.log. Thanks to Paul Webster.</changes>
+      <changes lang="EN">Fix "Play all songs" context menu option on SB Radio and Jivelite. Thanks to CJS for providing the debug log.</changes>
       <creator>schmij97</creator>
       <category>musicservices</category>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.82/YouTubeMusic-1.3.82.zip</url>
-      <sha>9b711a60f48925707168682a96f8b56c0e66b331</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.83/YouTubeMusic-1.3.83.zip</url>
+      <sha>437113d36fd3ad7932616cd147a158fbb41f6450</sha>
     </plugin>
   </plugins>
 </extensions>

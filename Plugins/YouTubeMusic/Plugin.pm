@@ -366,11 +366,12 @@ sub _cliPlaylistCmd {
     my $item_id = $request->getParam('item_id') || '';
     my $touch   = $request->getParam('touchToPlay') || '';
 
-    $log->info("_cliPlaylistCmd: method=$method item_id=$item_id touchToPlay=$touch");
-
-    # Only handle touchToPlay requests from Jivelite/SB Radio/SqueezePlay
+    my $is_playall = ($method eq 'playall');
+    $method = 'play' if $is_playall;
+    $log->info("_cliPlaylistCmd: method=$method item_id=$item_id touchToPlay=$touch is_playall=$is_playall");
+    # Only handle touchToPlay or playall requests from Jivelite/SB Radio/SqueezePlay
     # For normal Material skin play commands, delegate to XMLBrowser
-    unless ($touch) {
+    unless ($touch || $is_playall) {
         Slim::Control::XMLBrowser::cliQuery('youtubemusic', Plugins::YouTubeMusic::Plugin->feed($request->client), $request);
         return;
     }
