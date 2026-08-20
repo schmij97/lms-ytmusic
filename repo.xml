@@ -4,14 +4,14 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.89" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.90" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Fix prefetch stopping too early on albums (was stopping at 3 tracks remaining). Add "Disable persistent Node worker" option in settings for memory-constrained systems like Pi Zero 2W (~140MB RAM saving). Update piCorePlayer log path suggestion. Thanks to Paul Webster.</changes>
+      <changes lang="EN">Fix prefetch chain not advancing beyond track 3 on albums. Previously _prefetch_with_client was only called for the first track — now called for every track so the chain correctly advances through the album. Thanks to Paul Webster and CJS for detailed logs.</changes>
       <creator>schmij97</creator>
       <category>musicservices</category>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.89/YouTubeMusic-1.3.89.zip</url>
-      <sha>bb97eedcbd8c4e0a7ab1ed8a5f9ba6a8d1a19500</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.90/YouTubeMusic-1.3.90.zip</url>
+      <sha>bd7d23565f28465c898ec95066da28931985887c</sha>
     </plugin>
   </plugins>
 </extensions>
