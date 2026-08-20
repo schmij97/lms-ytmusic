@@ -221,7 +221,7 @@ sub _prefetch_with_client {
     my $next_index = $current_index + 1;
     my $count      = eval { Slim::Player::Playlist::count($client) } || 0;
     $log->info("Prefetch: current=$current_index next=$next_index count=$count");
-    if ($next_index >= $count || ($count - $next_index) <= 3) {
+    if ($next_index >= $count || ($count - $next_index) <= 0) {
         my $cur_track = eval { Slim::Player::Playlist::track($client, $current_index) };
         if ($cur_track) {
             my $cur_url = eval { $cur_track->url } // '';
@@ -265,7 +265,7 @@ sub _prefetch_next_track {
 
     my $next_index = $current_index + 1;
     my $count      = eval { Slim::Player::Playlist::count($client) } || 0;
-    if ($next_index >= $count || ($count - $next_index) <= 3) {
+    if ($next_index >= $count || ($count - $next_index) <= 0) {
         # Queue is empty — auto-continue with radio based on current track
         $log->debug("Prefetch: queue empty, starting radio from current track");
         my $cur_track = eval { Slim::Player::Playlist::track($client, $current_index) };

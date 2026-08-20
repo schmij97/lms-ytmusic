@@ -125,7 +125,8 @@ sub _start_proxy {
         push @win_args, '--ytdlp',    $prefs->get('path_ytdlp')  if $prefs->get('path_ytdlp');
         push @win_args, '--ffmpeg',   $prefs->get('path_ffmpeg') if $prefs->get('path_ffmpeg');
         push @win_args, '--node',     $prefs->get('path_node')   if $prefs->get('path_node');
-        push @win_args, '--log-file', $prefs->get('log_path')    if $prefs->get('log_path');
+        push @win_args, '--log-file',        $prefs->get('log_path')         if $prefs->get('log_path');
+        push @win_args, '--no-node-worker'                                          if $prefs->get('disable_node_worker');
         my $pid = system(1, $python, $script, '--port', $port, '--log-level', 'WARNING', '--codec', $codec, @win_args);
         if (!$pid) {
             $log->error("system(1,...) failed: $!");
@@ -145,7 +146,8 @@ sub _start_proxy {
             push @extra_args, '--ytdlp',    $prefs->get('path_ytdlp')  if $prefs->get('path_ytdlp');
             push @extra_args, '--ffmpeg',   $prefs->get('path_ffmpeg') if $prefs->get('path_ffmpeg');
             push @extra_args, '--node',     $prefs->get('path_node')   if $prefs->get('path_node');
-            push @extra_args, '--log-file', $prefs->get('log_path')    if $prefs->get('log_path');
+            push @extra_args, '--log-file',        $prefs->get('log_path')         if $prefs->get('log_path');
+            push @extra_args, '--no-node-worker'                                          if $prefs->get('disable_node_worker');
             exec($python, $script, '--port', $port, '--log-level', 'WARNING', '--codec', $codec, @extra_args) or do {
                 $log->error("exec failed: $!");
                 exit 1;

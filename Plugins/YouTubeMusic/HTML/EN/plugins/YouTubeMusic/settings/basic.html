@@ -194,7 +194,12 @@
     </script>
   [% END %]
 
-  [% WRAPPER setting title="Logging" desc="Configure proxy logging. The proxy log is useful for diagnosing playback issues. Leave the log path empty to use the default location (YouTubeMusic/Bin/ytmproxy.log in the LMS cache folder). piCorePlayer users can set the path to /var/log/slimserver/pcp_ytmproxy.log to make it available in the pCP Diagnostics/Logs interface." %]
+  [% WRAPPER setting title="Performance" desc="Performance tuning options. The persistent Node worker keeps V8 JIT-compiled JavaScript in memory for faster track extraction (~100ms vs ~2.5s), but uses ~140MB of RAM. Disable it on memory-constrained systems like Raspberry Pi Zero 2W." %]
+    <input type="checkbox" name="pref_disable_node_worker" id="pref_disable_node_worker" value="1" [% IF disable_node_worker %]checked[% END %] />
+    <label for="pref_disable_node_worker">Disable persistent Node worker (saves ~140MB RAM, slower track starts)</label>
+  [% END %]
+
+  [% WRAPPER setting title="Logging" desc="Configure proxy logging. The proxy log is useful for diagnosing playback issues. Leave the log path empty to use the default location (YouTubeMusic/Bin/ytmproxy.log in the LMS cache folder). piCorePlayer users can set the path to /var/log/slimserver/ytmproxy.log to make it available in the pCP Diagnostics/Logs interface." %]
     <table style="border-collapse:collapse;width:100%;">
       <tr>
         <td style="padding:4px 8px;width:120px;">Log file path</td>

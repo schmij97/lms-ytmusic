@@ -2041,7 +2041,7 @@ class _Handler(BaseHTTPRequestHandler):
             logging.exception("Proxy error on %s", self.path)
             self._error("Internal proxy error", 500)
 
-def run(port=9876, log_level="INFO", codec="auto", log_file=""):
+def run(port=9876, log_level="INFO", codec="auto", log_file="", no_node_worker=False):
     global _AUDIO_CODEC, _AUDIO_FORMAT, _AUDIO_MIME
     if codec == "mp3":
         _AUDIO_CODEC, _AUDIO_FORMAT, _AUDIO_MIME = "libmp3lame", "mp3", "audio/mpeg"
@@ -2104,7 +2104,10 @@ def run(port=9876, log_level="INFO", codec="auto", log_file=""):
         except Exception as e:
             logging.warning("Node.js auto-download error: %s", e)
     # Start persistent Node worker for fast JS challenge solving
-    _start_node_worker()
+    if not no_node_worker:
+        _start_node_worker()
+    else:
+        logging.info("Node worker disabled (--no-node-worker)")
 
     # Pre-warm persistent YDL instance in background so first song starts faster
     def _warmup_ydl():
@@ -2137,7 +2140,8 @@ if __name__ == "__main__":
     ap.add_argument("--ytdlp",     default="", help="Override path to yt-dlp binary")
     ap.add_argument("--ffmpeg",    default="", help="Override path to ffmpeg binary")
     ap.add_argument("--node",      default="", help="Override path to node binary")
-    ap.add_argument("--log-file",  default="", help="Path to log file (default: BIN_DIR/ytmproxy.log)")
+    ap.add_argument("--log-file",      default="", help="Path to log file (default: BIN_DIR/ytmproxy.log)")
+    ap.add_argument("--no-node-worker", action="store_true", help="Disable persistent Node worker (saves ~140MB RAM)")
     args = ap.parse_args()
     # Apply path overrides before run()
     if args.ytdlp and os.path.isfile(args.ytdlp):
@@ -2149,4 +2153,4 @@ if __name__ == "__main__":
     if args.node and os.path.isfile(args.node):
         os.environ['YTM_NODE_OVERRIDE'] = args.node
         logging.info("node path override: %s", args.node)
-    run(args.port, args.log_level, args.codec, args.log_file)
+    run(args.port, args.log_level, args.codec, args.log_file, args.no_node_worker)

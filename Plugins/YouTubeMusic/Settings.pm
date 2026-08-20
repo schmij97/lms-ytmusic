@@ -18,7 +18,7 @@ sub name { 'PLUGIN_YOUTUBEMUSIC' }
 
 sub page { 'plugins/YouTubeMusic/settings/basic.html' }
 
-sub prefs { return ($prefs, qw(proxy_port autoplay codec path_python path_ytdlp path_ffmpeg path_node log_path)) }
+sub prefs { return ($prefs, qw(proxy_port autoplay codec path_python path_ytdlp path_ffmpeg path_node log_path disable_node_worker)) }
 
 sub handler {
     my ($class, $client, $params) = @_;
@@ -59,6 +59,7 @@ sub handler {
         $prefs->set('path_ffmpeg', $params->{pref_path_ffmpeg} // $params->{path_ffmpeg} // '');
         $prefs->set('path_node',   $params->{pref_path_node}   // $params->{path_node}   // '');
         $prefs->set('log_path',    $params->{pref_log_path}    // $params->{log_path}    // '');
+        $prefs->set('disable_node_worker', $params->{pref_disable_node_worker} ? 1 : 0);
         $log->info("Saved " . scalar(@playlists) . " playlists");
     }
 
@@ -73,6 +74,7 @@ sub handler {
     $params->{path_ffmpeg} = $prefs->get('path_ffmpeg') || '';
     $params->{path_node}   = $prefs->get('path_node')   || '';
     $params->{log_path}    = $prefs->get('log_path')    || '';
+    $params->{disable_node_worker} = $prefs->get('disable_node_worker') // 0;
     return $class->SUPER::handler($client, $params);
 }
 
