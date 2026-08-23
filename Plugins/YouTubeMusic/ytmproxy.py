@@ -1976,6 +1976,14 @@ class _Handler(BaseHTTPRequestHandler):
                 sz = os.path.getsize(tmp_path) if os.path.exists(tmp_path) else 0
                 logging.warning("Starting stream %s with %d bytes buffered", vid, sz)
                 open_path = done_path if os.path.exists(done_path) else tmp_path
+                if not os.path.exists(open_path) or os.path.getsize(open_path) == 0:
+                    logging.warning("Stream %s produced 0 bytes — sending error to trigger skip", vid)
+                    try:
+                        self.wfile.write(b"\r\n")
+                        self.wfile.flush()
+                    except Exception:
+                        pass
+                    return
                 if os.path.exists(open_path) and os.path.getsize(open_path) > 0:
                     try:
                         position = 0
