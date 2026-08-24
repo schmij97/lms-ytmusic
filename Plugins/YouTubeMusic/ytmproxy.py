@@ -96,6 +96,15 @@ def _col(renderer, col_idx, run_idx=0):
     except (IndexError, KeyError):
         return ""
 
+def _fixed_col(renderer, col_idx=0, run_idx=0):
+    """Extract text from fixedColumns (used for duration in playlists)."""
+    try:
+        col  = renderer["fixedColumns"][col_idx]
+        runs = col["musicResponsiveListItemFixedColumnRenderer"]["text"]["runs"]
+        return runs[run_idx].get("text", "") if runs else ""
+    except (IndexError, KeyError):
+        return ""
+
 def _page_type(renderer):
     return (
         renderer.get("navigationEndpoint", {})
@@ -116,6 +125,22 @@ def _video_id_from_overlay(renderer):
                 .get("videoId", "")
     )
 
+def _duration_to_secs(d):
+    """Convert duration string like '3:45' or '1:02:34' to seconds."""
+    if not d:
+        return 0
+    if isinstance(d, int):
+        return d
+    try:
+        parts = str(d).strip().split(":")
+        if len(parts) == 2:
+            return int(parts[0]) * 60 + int(parts[1])
+        elif len(parts) == 3:
+            return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+    except (ValueError, IndexError):
+        pass
+    return 0
+
 def _parse_song(r):
     video_id = _video_id_from_overlay(r)
     return {
@@ -123,7 +148,7 @@ def _parse_song(r):
         "title":     _col(r, 0),
         "artist":    _col(r, 1),
         "album":     _col(r, 2),
-        "duration":  _col(r, 3) or _col(r, 4),
+        "duration":  _duration_to_secs(_fixed_col(r, 0) or _col(r, 3) or _col(r, 4)),
         "videoId":   video_id,
         "thumbnail": _thumb_from_renderer(r),
         "url":       f"ytm://{video_id}" if video_id else "",
@@ -655,7 +680,8 @@ def browse_olak_playlist(playlist_id):
             for badge in lockup["contentImage"]["thumbnailViewModel"]["overlays"][0]["thumbnailBottomOverlayViewModel"]["badges"]:
                 t = badge.get("thumbnailBadgeViewModel", {}).get("text", "")
                 if t and ":" in t:
-                    duration = t
+                    # Convert "m:ss" or "h:mm:ss" to seconds for LMS
+                    duration = _duration_to_secs(t)
                     break
         except (KeyError, IndexError, TypeError): pass
         thumbnail = ""
