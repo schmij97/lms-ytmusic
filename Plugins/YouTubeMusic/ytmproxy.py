@@ -1872,6 +1872,17 @@ class _Handler(BaseHTTPRequestHandler):
                             else:
                                 self._send_json({"status": "error", "message": msg})
                             return
+                        # For onedir/frozen installs (macOS zip, Windows exe),
+                        # yt-dlp -U doesn't work — re-download instead
+                        _asset, _is_zip = _platform_ytdlp_asset()
+                        _is_exe = ytdlp.endswith('.exe') if ytdlp else False
+                        if _is_zip or _is_exe:
+                            ok, msg = download_ytdlp()
+                            if ok:
+                                self._send_json({"status": "ok", "version": msg})
+                            else:
+                                self._send_json({"status": "error", "message": msg})
+                            return
                         result = subprocess.run(
                             [ytdlp, "-U"],
                             capture_output=True, text=True, timeout=120
