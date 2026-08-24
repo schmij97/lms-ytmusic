@@ -1622,7 +1622,13 @@ def stream_audio(video_id):
     _t1 = _time.monotonic()
     _log_fn = logging.warning if audio_url else (logging.info if _ydl_available is False else logging.warning)
     _log_fn("PREFETCH_YDL videoId=%s extraction=%.2fs url=%s", video_id, _t1-_t0, "OK" if audio_url else "FAIL")
-    if audio_url:
+    # Only use direct ffmpeg URL approach on non-ARM platforms
+    # On ARM (Pi), YouTube's CDN silently times out ffmpeg connections
+    import platform as _platform
+    _machine = _platform.machine().lower()
+    _is_arm = _machine in ('armv7l', 'armv6l', 'armhf', 'arm')
+    _use_ffmpeg_url = audio_url and not _is_arm
+    if _use_ffmpeg_url:
         ffmpeg_url_cmd = [
             _find_ffmpeg(), "-loglevel", "error",
             "-user_agent", "Mozilla/5.0 (Linux; Android 6.0; Nexus 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Mobile Safari/537.36",
