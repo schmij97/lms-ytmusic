@@ -1386,6 +1386,8 @@ def _get_ydl():
                     logging.info("yt_dlp Python package not available (standalone binary install), persistent YDL disabled")
                     return None
                 import yt_dlp
+                # Apply node provider patch so YDL uses persistent worker socket
+                _patch_node_provider()
                 node_path = _find_node()
                 js_runtimes = {'node': {'path': node_path}} if node_path else {'node': {}}
                 ydl_opts = {
@@ -1662,7 +1664,9 @@ def stream_audio(video_id):
             return
         # Fallback: ffmpeg URL approach produced no output, try subprocess yt-dlp
         logging.warning("ffmpeg URL produced 0 bytes for %s, falling back to subprocess", video_id)
-    if _ydl_available is not False:
+    if audio_url and _is_arm:
+        logging.info("ARM Linux: using subprocess for %s (direct ffmpeg URL disabled)", video_id)
+    elif _ydl_available is not False:
         logging.warning("Persistent YDL failed for %s, falling back to subprocess", video_id)
     else:
         logging.info("Persistent YDL not available for %s, using subprocess", video_id)
