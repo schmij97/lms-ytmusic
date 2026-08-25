@@ -1388,6 +1388,14 @@ def _get_ydl():
                 import yt_dlp
                 # Apply node provider patch so YDL uses persistent worker socket
                 _patch_node_provider()
+                # Force reload of node module so patch takes effect
+                import importlib as _importlib
+                try:
+                    import yt_dlp.extractor.youtube.jsc._builtin.node as _node_mod
+                    _importlib.reload(_node_mod)
+                    logging.info("Reloaded node module after patch")
+                except Exception as _e:
+                    logging.warning("Could not reload node module: %s", _e)
                 node_path = _find_node()
                 js_runtimes = {'node': {'path': node_path}} if node_path else {'node': {}}
                 ydl_opts = {
@@ -1579,26 +1587,8 @@ def stream_audio(video_id):
 
     url = f"https://music.youtube.com/watch?v={video_id}"
 
-    _NODE_PATH = _find_node()
-    ytdlp_cmd = [
-        ytdlp,
-        "--no-playlist",
-        "--quiet",
-        "--no-warnings",
-        "--no-check-certificates",
-        "--socket-timeout", "10",
-        "--retries", "2",
-        "--extractor-retries", "2",
-        "--no-part",
-        "-f", "bestaudio[ext=m4a]/bestaudio[ext=mp3]/bestaudio",
-        # node_path computed before cmd list to avoid calling _find_node() twice
-        *(["--js-runtimes", f"node:{_NODE_PATH}"] if _NODE_PATH else ["--js-runtimes", "node"]),
-        "--extractor-args", "youtube:player_client=web_embedded",
-        "--cache-dir", os.path.join(BIN_DIR, "ytdlp_cache"),
-        "--add-header", "User-Agent:com.google.android.youtube/17.29.34",
-        "-o", "-",
-        url,
-    ]
+    # ytdlp_cmd is built after _get_audio_url() so we can use the CDN URL directly
+    # This avoids making yt-dlp extract the YouTube Music watch URL a second time
 
     ffmpeg_cmd = [
         _find_ffmpeg(),
@@ -1624,13 +1614,31 @@ def stream_audio(video_id):
     _t1 = _time.monotonic()
     _log_fn = logging.warning if audio_url else (logging.info if _ydl_available is False else logging.warning)
     _log_fn("PREFETCH_YDL videoId=%s extraction=%.2fs url=%s", video_id, _t1-_t0, "OK" if audio_url else "FAIL")
+    # Use already-resolved CDN URL for subprocess fallback — avoids second YouTube extraction
+    ytdlp_url = audio_url or url
+    _NODE_PATH = _find_node()
+    ytdlp_cmd = [
+        ytdlp,
+        "--no-playlist",
+        "--quiet",
+        "--no-warnings",
+        "--no-check-certificates",
+        "--socket-timeout", "10",
+        "--retries", "2",
+        "--extractor-retries", "2",
+        "--no-part",
+        "--http-chunk-size", "1M",
+        "-f", "bestaudio[ext=m4a]/bestaudio[ext=mp3]/bestaudio",
+        *(["--js-runtimes", f"node:{_NODE_PATH}"] if _NODE_PATH else ["--js-runtimes", "node"]),
+        "--extractor-args", "youtube:player_client=web_embedded",
+        "--cache-dir", os.path.join(BIN_DIR, "ytdlp_cache"),
+        "--add-header", "User-Agent:com.google.android.youtube/17.29.34",
+        "-o", "-",
+        ytdlp_url,
+    ]
     # Only use direct ffmpeg URL approach on non-ARM platforms
     # On ARM (Pi), YouTube's CDN silently times out ffmpeg connections
-    import platform as _platform
-    _machine = _platform.machine().lower()
-    _is_arm = _machine in ('armv7l', 'armv6l', 'armhf', 'arm')
-    _use_ffmpeg_url = audio_url and not _is_arm
-    if _use_ffmpeg_url:
+    if audio_url:
         ffmpeg_url_cmd = [
             _find_ffmpeg(), "-loglevel", "error",
             "-user_agent", "Mozilla/5.0 (Linux; Android 6.0; Nexus 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Mobile Safari/537.36",
@@ -1658,15 +1666,13 @@ def stream_audio(video_id):
             ffmpeg_proc.stdout.close()
             stderr_out = ffmpeg_proc.stderr.read().decode("utf-8", errors="replace").strip()
             ffmpeg_proc.wait()
-            if stderr_out:
+            if stderr_out and bytes_sent == 0:
                 logging.warning("ffmpeg URL stderr: %s", stderr_out[:500])
         if bytes_sent > 0:
             return
-        # Fallback: ffmpeg URL approach produced no output, try subprocess yt-dlp
+        # Fallback: subprocess yt-dlp
         logging.warning("ffmpeg URL produced 0 bytes for %s, falling back to subprocess", video_id)
-    if audio_url and _is_arm:
-        logging.info("ARM Linux: using subprocess for %s (direct ffmpeg URL disabled)", video_id)
-    elif _ydl_available is not False:
+    if _ydl_available is not False:
         logging.warning("Persistent YDL failed for %s, falling back to subprocess", video_id)
     else:
         logging.info("Persistent YDL not available for %s, using subprocess", video_id)
