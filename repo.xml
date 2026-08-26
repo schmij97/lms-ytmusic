@@ -4,14 +4,14 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.3.95" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.3.96" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Major streaming reliability fix for ARM Linux (Raspberry Pi): add --http-chunk-size 1M to subprocess yt-dlp to fix CDN stalling. When ffmpeg direct URL fails, fallback now reuses already-resolved CDN URL instead of re-extracting from YouTube, reducing fallback latency from ~27s to ~15s. Fix persistent YDL node provider patch timing.</changes>
+      <changes lang="EN">Fix autoplay/radio not triggering after playlist ends. Radio now starts 2 tracks before the end of the queue instead of waiting until the very last track, giving it time to add new tracks before playback stops.</changes>
       <creator>schmij97</creator>
       <category>musicservices</category>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.95/YouTubeMusic-1.3.95.zip</url>
-      <sha>c12a2c6e87bd71904a26214d8e0f71fcfe95fb1c</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.3.96/YouTubeMusic-1.3.96.zip</url>
+      <sha>f85f5e18903e039c854d87a1efff3e6685c8de87</sha>
     </plugin>
   </plugins>
 </extensions>
