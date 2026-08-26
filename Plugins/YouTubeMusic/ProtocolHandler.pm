@@ -49,6 +49,17 @@ sub songBytes       {}
 my $_audio_format = 'mp3';
 my %_radio_active;  # tracks which clients have radio running
 
+# Required for scrobbling. Slim::Plugin::AudioScrobbler::Plugin::canScrobble
+# rejects any remote track whose handler does not implement this, so without
+# it YouTube Music plays are silently never submitted to Last.fm/ListenBrainz.
+# 'P' = chosen by the user; 'R' = internet radio, which AudioScrobbler filters
+# out unless the include_radio pref is enabled.
+sub audioScrobblerSource {
+    my ($class, $client) = @_;
+    my $client_id = ($client && $client->id) // '';
+    return ($client_id && $_radio_active{$client_id}) ? 'R' : 'P';
+}
+
 sub _init_audio_format {
     my $port = preferences('plugin.youtubemusic')->get('proxy_port') || 9876;
     Slim::Networking::SimpleAsyncHTTP->new(
