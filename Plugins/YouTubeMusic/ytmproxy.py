@@ -934,8 +934,15 @@ def browse_artist(browse_id):
             continue
         sec_title = _text(
             target.get("header", {}).get("musicCarouselShelfBasicHeaderRenderer", {})
-        )
-        items = _shelf_items(target)
+        ) or _text(target)
+        # Top songs is a list shelf; Albums, Singles, Videos, Fans might also
+        # like etc. are carousels of musicTwoRowItemRenderer cards.
+        items = _shelf_items(target) if shelf else _parse_two_row_items(target)
+        for item in items:
+            if item.get("type") == "artist":
+                item.setdefault("name", item.get("title", ""))
+            elif item.get("type") == "album":
+                item.setdefault("year", item.get("subtitle", ""))
         if items:
             result["sections"].append({"title": sec_title, "items": items})
     _cache_set(cache_key, result)
