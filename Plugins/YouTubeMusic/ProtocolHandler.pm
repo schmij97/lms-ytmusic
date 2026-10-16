@@ -77,13 +77,14 @@ sub contentType     { $_audio_format }
 # the progress bar, and skips the bytes itself if the proxy can't honour the
 # range yet. AAC/FLAC fallbacks have no fixed bytes-per-second, so they
 # stay non-seekable.
+#
+# Deliberately not conditional on the duration being known: Slim::Player::Song
+# caches this answer for the whole track, and the duration often arrives a
+# moment after playback starts, so a duration check here could leave a track
+# permanently unseekable. The byte offset doesn't need the duration anyway.
 use constant SEEK_BITRATE => 192_000;
 
-sub canSeek {
-    my ($class, $client, $song) = @_;
-    return 0 unless $_audio_format eq 'mp3';
-    return $song->duration ? 1 : 0;
-}
+sub canSeek { $_audio_format eq 'mp3' ? 1 : 0 }
 
 sub getSeekData {
     my ($class, $client, $song, $newtime) = @_;

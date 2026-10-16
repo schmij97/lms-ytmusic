@@ -2164,16 +2164,15 @@ class _Handler(BaseHTTPRequestHandler):
                 if not vid:
                     return self._error("Missing videoId", 400)
 
+                # LMS seeks with "Range: bytes=N-" (it always sends one,
+                # usually bytes=0-). Both paths below honour it.
+                m     = re.match(r"bytes=(\d+)-", self.headers.get("Range", ""))
+                start = int(m.group(1)) if m else 0
+
                 cached_path = get_prefetched_path(vid)
                 if cached_path:
                     try:
-                        size  = os.path.getsize(cached_path)
-                        # LMS seeks with "Range: bytes=N-" (it always sends
-                        # one, usually bytes=0-). Honour it from the finished
-                        # file; a still-downloading track falls through to the
-                        # progressive path below and LMS skips the bytes itself.
-                        m     = re.match(r"bytes=(\d+)-", self.headers.get("Range", ""))
-                        start = int(m.group(1)) if m else 0
+                        size = os.path.getsize(cached_path)
                         if start >= size:
                             self.send_response(416)
                             self.send_header("Content-Range", f"bytes */{size}")
@@ -2211,9 +2210,16 @@ class _Handler(BaseHTTPRequestHandler):
                 if not cached:
                     start_prefetch(vid)
                 # Send HTTP headers immediately — don't make LMS wait for yt-dlp to start
+                # For a seek into a track that is still downloading, start at
+                # the requested offset; the loop below waits for the download
+                # (which runs far faster than real time) to get there. The
+                # total length isn't known yet, so Content-Range carries only
+                # the start - which is the part LMS checks.
                 try:
-                    self.send_response(200)
+                    self.send_response(206 if start else 200)
                     self.send_header("Content-Type", _AUDIO_MIME)
+                    if start:
+                        self.send_header("Content-Range", f"bytes {start}-")
                     self.send_header("Cache-Control", "no-cache")
                     self.send_header("Connection", "close")
                     self.send_header("icy-metaint", "0")
@@ -2243,7 +2249,7 @@ class _Handler(BaseHTTPRequestHandler):
                     return
                 if os.path.exists(open_path) and os.path.getsize(open_path) > 0:
                     try:
-                        position = 0
+                        position = start
                         while True:
                             current = tmp_path if os.path.exists(tmp_path) else done_path
                             if not os.path.exists(current):
