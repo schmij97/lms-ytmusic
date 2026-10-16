@@ -38,7 +38,6 @@ my $log   = Slim::Utils::Log->addLogCategory({
 sub isRemote        { 1 }
 sub isAudio         { 1 }
 sub isAudioURL      { 1 }
-sub canSeek         { 0 }
 sub canDirectStream { 0 }
 sub songBytes       {}
 
@@ -71,6 +70,28 @@ sub _init_audio_format {
 sub formatOverride  { $_audio_format }
 sub getFormatForURL { $_audio_format }
 sub contentType     { $_audio_format }
+
+# Seeking. The proxy always serves constant-bitrate 192 kbps MP3, so a time
+# maps straight to a byte offset. LMS requests that offset with
+# "Range: bytes=N-" (Slim::Player::Protocols::HTTP::requestString), fixes up
+# the progress bar, and skips the bytes itself if the proxy can't honour the
+# range yet. AAC/FLAC fallbacks have no fixed bytes-per-second, so they
+# stay non-seekable.
+use constant SEEK_BITRATE => 192_000;
+
+sub canSeek {
+    my ($class, $client, $song) = @_;
+    return 0 unless $_audio_format eq 'mp3';
+    return $song->duration ? 1 : 0;
+}
+
+sub getSeekData {
+    my ($class, $client, $song, $newtime) = @_;
+    return {
+        sourceStreamOffset => int(SEEK_BITRATE / 8 * $newtime),
+        timeOffset         => $newtime,
+    };
+}
 
 # Substitute the local proxy stream URL before the base class opens the
 # socket, same pattern used by RadioParadise's protocol handler.

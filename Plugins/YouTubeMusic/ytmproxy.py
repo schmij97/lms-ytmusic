@@ -2,6 +2,7 @@
 import argparse
 import json
 import logging
+import re
 import shutil
 import subprocess
 import sys
@@ -2166,14 +2167,31 @@ class _Handler(BaseHTTPRequestHandler):
                 cached_path = get_prefetched_path(vid)
                 if cached_path:
                     try:
-                        size = os.path.getsize(cached_path)
-                        self.send_response(200)
+                        size  = os.path.getsize(cached_path)
+                        # LMS seeks with "Range: bytes=N-" (it always sends
+                        # one, usually bytes=0-). Honour it from the finished
+                        # file; a still-downloading track falls through to the
+                        # progressive path below and LMS skips the bytes itself.
+                        m     = re.match(r"bytes=(\d+)-", self.headers.get("Range", ""))
+                        start = int(m.group(1)) if m else 0
+                        if start >= size:
+                            self.send_response(416)
+                            self.send_header("Content-Range", f"bytes */{size}")
+                            self.send_header("Content-Length", "0")
+                            self.send_header("Connection", "close")
+                            self.end_headers()
+                            return
+                        self.send_response(206 if start else 200)
                         self.send_header("Content-Type", _AUDIO_MIME)
-                        self.send_header("Content-Length", str(size))
+                        self.send_header("Content-Length", str(size - start))
+                        if start:
+                            self.send_header("Content-Range", f"bytes {start}-{size - 1}/{size}")
+                        self.send_header("Accept-Ranges", "bytes")
                         self.send_header("Cache-Control", "no-cache")
                         self.send_header("Connection", "close")
                         self.end_headers()
                         with open(cached_path, "rb") as f:
+                            f.seek(start)
                             while True:
                                 chunk = f.read(65536)
                                 if not chunk:
