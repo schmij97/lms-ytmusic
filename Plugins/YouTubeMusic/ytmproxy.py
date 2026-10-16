@@ -866,6 +866,47 @@ def browse_olak_playlist(playlist_id):
     _cache_set(cache_key, result)
     return result
 
+def _album_header(data):
+    """Return the musicResponsiveHeaderRenderer of an album page, or {}."""
+    tabs = (
+        data.get("contents", {})
+            .get("twoColumnBrowseResultsRenderer", {})
+            .get("tabs", [])
+    )
+    for tab in tabs:
+        sections = (
+            tab.get("tabRenderer", {})
+               .get("content", {})
+               .get("sectionListRenderer", {})
+               .get("contents", [])
+        )
+        for section in sections:
+            header = section.get("musicResponsiveHeaderRenderer")
+            if header:
+                return header
+    return {}
+
+def _fill_album_track_metadata(data, items):
+    """Album track rows carry only title, play count and duration: the artist
+    column is empty on single-artist albums, the third column (parsed as
+    "album") is the play count, and there is no per-track artwork. Take the
+    album title, artist and cover from the page header instead."""
+    header = _album_header(data)
+    if not header:
+        return
+    album  = _text(header, "title")
+    artist = _text(header, "straplineTextOne")
+    thumb  = _thumb_from_renderer(header)
+    for item in items:
+        if item.get("type") != "song":
+            continue
+        if album:
+            item["album"] = album
+        if artist and not item.get("artist"):
+            item["artist"] = artist
+        if thumb and not item.get("thumbnail"):
+            item["thumbnail"] = thumb
+
 def browse_playlist(browse_id):
     cache_key = f"playlist:{browse_id}"
     cached = _cache_get(cache_key)
@@ -908,6 +949,9 @@ def browse_playlist(browse_id):
                                 items.append(ep)
                         else:
                             items.extend(_shelf_items({"contents": [entry]}))
+
+    if browse_id.startswith("MPREb_"):
+        _fill_album_track_metadata(data, items)
 
     result = {"browseId": browse_id, "items": items}
     _cache_set(cache_key, result)
