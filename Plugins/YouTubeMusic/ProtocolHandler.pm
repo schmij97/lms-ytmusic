@@ -386,6 +386,23 @@ sub _start_radio {
     });
 }
 
+# The player endpoint behind getSongInfo describes the video, not the
+# release: its thumbnail is a video still, it has no album, and the artist
+# is the channel name. When browse/search already primed the cache with the
+# album's own title, artist and cover, keep those and only fill in gaps.
+sub _merge_song_info {
+    my ($video_id, $info) = @_;
+    my $have = $_metadata_cache{$video_id} || {};
+
+    return $_metadata_cache{$video_id} = {
+        title    => $have->{title}    || $info->{title}     || '',
+        artist   => $have->{artist}   || $info->{artist}    || '',
+        album    => $have->{album}    || $info->{album}     || '',
+        duration => $info->{duration} || $have->{duration}  || 0,
+        cover    => $have->{cover}    || $info->{thumbnail} || '',
+    };
+}
+
 sub _fetch_metadata {
     my ($video_id, $song) = @_;
 
@@ -393,18 +410,12 @@ sub _fetch_metadata {
         my $info = shift;
         return unless $info && ref $info eq 'HASH';
 
-        $_metadata_cache{$video_id} = {
-            title    => $info->{title}     || '',
-            artist   => $info->{artist}    || '',
-            album    => $info->{album}     || '',
-            duration => $info->{duration}  || 0,
-            cover    => $info->{thumbnail} || '',
-        };
+        my $meta = _merge_song_info($video_id, $info);
 
         my $track = $song->currentTrack();
-        $track->title($info->{title})        if $info->{title};
-        $track->secs($info->{duration})      if $info->{duration};
-        $track->coverurl($info->{thumbnail}) if $info->{thumbnail};
+        $track->title($meta->{title})       if $meta->{title};
+        $track->secs($meta->{duration})     if $meta->{duration};
+        $track->coverurl($meta->{cover})    if $meta->{cover};
         $track->update();
 
         Slim::Control::Request::notifyFromArray(undef, ['newmetadata']);
@@ -427,13 +438,7 @@ sub getMetadataFor {
         Plugins::YouTubeMusic::API->getSongInfo($vid, sub {
             my $info = shift;
             return unless $info && ref $info eq 'HASH';
-            $_metadata_cache{$vid} = {
-                title    => $info->{title}     || '',
-                artist   => $info->{artist}    || '',
-                album    => $info->{album}     || '',
-                duration => $info->{duration}  || 0,
-                cover    => $info->{thumbnail} || '',
-            };
+            _merge_song_info($vid, $info);
             Slim::Control::Request::notifyFromArray(undef, ['newmetadata']);
         });
     }
