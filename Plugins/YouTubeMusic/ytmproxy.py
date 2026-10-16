@@ -944,7 +944,43 @@ def browse_artist(browse_id):
             elif item.get("type") == "album":
                 item.setdefault("year", item.get("subtitle", ""))
         if items:
-            result["sections"].append({"title": sec_title, "items": items})
+            sec = {"title": sec_title, "items": items}
+            more = _artist_section_more(target)
+            if more:
+                sec["more"] = more
+            result["sections"].append(sec)
+    _cache_set(cache_key, result)
+    return result
+
+def _artist_section_more(carousel):
+    """The Albums and Singles & EPs carousels show ~10 cards; their header
+    links to the artist's full discography grid (an MPAD... browse ID)."""
+    header = carousel.get("header", {}).get("musicCarouselShelfBasicHeaderRenderer", {})
+    for ep in (
+        header.get("title", {}).get("runs", [{}])[0].get("navigationEndpoint", {}),
+        header.get("moreContentButton", {}).get("buttonRenderer", {}).get("navigationEndpoint", {}),
+    ):
+        browse_ep = ep.get("browseEndpoint", {})
+        if browse_ep.get("browseId", "").startswith("MPAD"):
+            return {"browseId": browse_ep["browseId"], "params": browse_ep.get("params", "")}
+    return None
+
+def browse_artist_discography(browse_id, params):
+    """Full album or singles list behind an artist page's "More" link."""
+    cache_key = f"discography:{browse_id}:{params}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+    data  = _post("browse", {"browseId": browse_id, "params": params})
+    items = []
+    for section in _single_col_sections(data):
+        grid = section.get("gridRenderer", {})
+        if grid:
+            items.extend(_parse_two_row_items({"contents": grid.get("items", [])}))
+    for item in items:
+        if item.get("type") == "album":
+            item.setdefault("year", item.get("subtitle", ""))
+    result = {"items": items}
     _cache_set(cache_key, result)
     return result
 
@@ -2132,6 +2168,11 @@ class _Handler(BaseHTTPRequestHandler):
                 if not bid:
                     return self._error("Missing browseId", 400)
                 self._send_json(browse_artist(bid))
+            elif path == "/artist/discography":
+                bid = p("browseId")
+                if not bid:
+                    return self._error("Missing browseId", 400)
+                self._send_json(browse_artist_discography(bid, p("params")))
             elif path == "/song":
                 vid = p("videoId")
                 if not vid:

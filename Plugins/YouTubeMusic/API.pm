@@ -80,6 +80,12 @@ sub browseArtist {
     _get("/artist?browseId=$browse_id", $cb);
 }
 
+sub browseArtistDiscography {
+    my ($class, $browse_id, $params, $cb) = @_;
+    my $p = uri_escape_utf8($params // '');
+    _get("/artist/discography?browseId=$browse_id&params=$p", $cb);
+}
+
 sub getSongInfo {
     my ($class, $video_id, $cb) = @_;
     _get("/song?videoId=$video_id", $cb);

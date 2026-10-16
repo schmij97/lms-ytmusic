@@ -837,7 +837,19 @@ sub _artist_menu {
                 name => $section->{title} || 'Tracks',
                 url  => sub {
                     my ($c, $cb) = @_;
-                    $cb->({ items => _items_to_menu($c, $section->{items} // [], { playall => 1 }), playall => 1 });
+                    my $show = sub {
+                        $cb->({ items => _items_to_menu($c, shift // [], { playall => 1 }), playall => 1 });
+                    };
+                    my $more = $section->{more};
+                    return $show->($section->{items}) unless $more && $more->{browseId};
+
+                    # Albums / Singles & EPs: fetch the full list behind the
+                    # section's "More" link, falling back to the preview cards.
+                    Plugins::YouTubeMusic::API->browseArtistDiscography($more->{browseId}, $more->{params}, sub {
+                        my $data = shift;
+                        my $full = ($data && ref $data eq 'HASH') ? $data->{items} : undef;
+                        $show->($full && @$full ? $full : $section->{items});
+                    });
                 },
             }
         } @{ $data->{sections} // [] };
