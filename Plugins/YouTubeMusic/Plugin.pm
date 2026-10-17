@@ -11,6 +11,7 @@ use Scalar::Util   qw(blessed);
 
 use Slim::Utils::Log;
 use Slim::Menu::GlobalSearch;
+use Slim::Menu::TrackInfo;
 use Slim::Utils::Prefs;
 use Slim::Utils::Strings qw(cstring string);
 use Slim::Player::ProtocolHandlers;
@@ -61,6 +62,17 @@ sub initPlugin {
         menu   => 'radios',
         is_app => 1,
         weight => 10,
+    );
+
+    # Track menu for songs in the plugin's own lists (see _song_actions). One
+    # word: XMLBrowser only accepts single-verb queries.
+    Slim::Control::Request::addDispatch(
+        ['youtubemusictrackinfo', 'items', '_index', '_quantity'],
+        [1, 1, 1, \&_cliTrackInfo]
+    );
+    Slim::Control::Request::addDispatch(
+        ['youtubemusictrackinfo', 'playlist', '_method'],
+        [1, 1, 1, \&_cliTrackInfo]
     );
 
     # Delete entries from the recent-searches list (info menu on players/apps)
@@ -319,6 +331,18 @@ sub postinitPlugin {
     } else {
         $log->info("youtube:// already handled by another plugin, skipping URL handler registration");
     }
+
+    # "Go to artist" and "Go to album" in the track menu (long press / More /
+    # info) of every YouTube Music track, wherever it is listed - and in the
+    # queue.
+    Slim::Menu::TrackInfo->registerInfoProvider( youtubemusic_artist => (
+        after => 'playitem',
+        func  => \&_trackinfo_artist,
+    ));
+    Slim::Menu::TrackInfo->registerInfoProvider( youtubemusic_album => (
+        after => 'youtubemusic_artist',
+        func  => \&_trackinfo_album,
+    ));
 
     # Register global search provider (closures capture query+type)
     Slim::Menu::GlobalSearch->registerInfoProvider( 'YouTube' => (
@@ -1061,6 +1085,142 @@ sub _history_menu {
     });
 }
 
+# In the plugin's own lists LMS gives a song only a basic context menu (play,
+# add, favourite, title, URL) that track info providers don't reach. Point
+# "more" at the full track menu instead - the one the queue shows, with "Go to
+# artist" and "Go to album". The other actions stay as they are.
+sub _song_actions {
+    my $url = shift;
+    my ($vid) = $url =~ m{^ytm://(.+)$};
+    return {
+        info => {
+            command     => ['youtubemusictrackinfo', 'items'],
+            # The ID, not the ytm:// URL: the web UI puts this unescaped into
+            # a link path, where "://" breaks it.
+            fixedParams => { videoId => $vid },
+        },
+    };
+}
+
+# youtubemusictrackinfo items <index> <quantity> videoId:<id> | url:ytm://<id>
+# youtubemusictrackinfo playlist <method> videoId:<id> | url:ytm://<id> item_id:<n>
+# The core track menu for a YouTube Music track. It needs a track object,
+# and LMS keeps those for remote tracks only while something holds on to
+# them (the queue does), so create one and keep the last few here.
+my @_menu_tracks;
+
+sub _cliTrackInfo {
+    my $request = shift;
+    my $client  = $request->client;
+    # The first request has videoId (see _song_actions); the entries' own
+    # actions carry url instead, the only one of the two XMLBrowser passes on.
+    my $vid = $request->getParam('videoId');
+    ($vid) = ($request->getParam('url') // '') =~ m{^ytm://(.+)$} unless defined $vid;
+    $vid //= '';
+    if ($vid !~ m{^[A-Za-z0-9_\-]+$}) {
+        $request->setStatusBadParams();
+        return;
+    }
+    my $url = "ytm://$vid";
+    $request->addParam('url', $url);
+
+    my $track = Slim::Schema->objectForUrl({ url => $url, create => 1 });
+    unless (blessed($track)) {
+        $request->setStatusBadParams();
+        return;
+    }
+    @_menu_tracks = ($track, grep { $_ != $track } @_menu_tracks);
+    splice(@_menu_tracks, 20) if @_menu_tracks > 20;
+
+    my $feed = Slim::Menu::TrackInfo->menu($client, $url, $track, {
+        menuMode    => $request->getParam('menu') || 0,
+        menuContext => 'normal',
+    });
+    unless ($feed) {
+        $request->setStatusBadParams();
+        return;
+    }
+    Slim::Control::XMLBrowser::cliQuery('youtubemusictrackinfo', $feed, $request);
+}
+
+sub _trackinfo_artist {
+    my ($client, $url, $track, $remoteMeta) = @_;
+    my ($vid) = ($url // '') =~ m{^ytm://([A-Za-z0-9_\-]+)};
+    return unless $vid;
+    return {
+        type        => 'link',
+        name        => cstring($client, 'PLUGIN_YOUTUBEMUSIC_GO_TO_ARTIST'),
+        url         => \&_song_artist_menu,
+        passthrough => [{ videoId => $vid }],
+        favorites   => 0,
+    };
+}
+
+sub _trackinfo_album {
+    my ($client, $url, $track, $remoteMeta) = @_;
+    my ($vid) = ($url // '') =~ m{^ytm://([A-Za-z0-9_\-]+)};
+    return unless $vid;
+    return {
+        type        => 'link',
+        name        => cstring($client, 'PLUGIN_YOUTUBEMUSIC_GO_TO_ALBUM'),
+        url         => \&_song_album_menu,
+        passthrough => [{ videoId => $vid }],
+        favorites   => 0,
+    };
+}
+
+# Title and artist as LMS knows them, to find the current copy of a song
+# whose saved video ID is dead.
+sub _song_meta {
+    my ($client, $vid) = @_;
+    my $meta = Plugins::YouTubeMusic::ProtocolHandler->getMetadataFor($client, "ytm://$vid") || {};
+    return { title => $meta->{title}, artist => $meta->{artist} };
+}
+
+sub _song_album_menu {
+    my ($client, $callback, $args, $params) = @_;
+
+    Plugins::YouTubeMusic::API->getSongLinks($params->{videoId}, _song_meta($client, $params->{videoId}), sub {
+        my $album = $_[0] && ref $_[0] eq 'HASH' && $_[0]->{album};
+        if (!$album || !$album->{browseId}) {
+            return $callback->({ items => [{
+                type => 'text',
+                name => cstring($client, 'PLUGIN_YOUTUBEMUSIC_NO_ALBUM'),
+            }] });
+        }
+        _playlist_menu($client, $callback, $args, {
+            browseId    => $album->{browseId},
+            browse_type => 'album',
+            album_title => $album->{title},
+        });
+    });
+}
+
+# The song's artist page; a choice first when it has several artists.
+sub _song_artist_menu {
+    my ($client, $callback, $args, $params) = @_;
+
+    Plugins::YouTubeMusic::API->getSongLinks($params->{videoId}, _song_meta($client, $params->{videoId}), sub {
+        my $artists = ($_[0] && ref $_[0] eq 'HASH' && $_[0]->{artists}) || [];
+        if (!@$artists) {
+            return $callback->({ items => [{
+                type => 'text',
+                name => cstring($client, 'PLUGIN_YOUTUBEMUSIC_NO_ARTIST'),
+            }] });
+        }
+        if (@$artists == 1) {
+            return _artist_menu($client, $callback, $args, { browseId => $artists->[0]{browseId} });
+        }
+        $callback->({ items => [ map {
+            {
+                name        => $_->{name},
+                url         => \&_artist_menu,
+                passthrough => [{ browseId => $_->{browseId} }],
+            }
+        } @$artists ] });
+    });
+}
+
 sub _artist_menu {
     my ($client, $callback, $args, $params) = @_;
 
@@ -1146,6 +1306,7 @@ sub _items_to_menu {
                 play      => $ytm_url,
                 type      => 'audio',
                 on_select => 'play',
+                itemActions => _song_actions($ytm_url),
                 $playall ? ( playall => 1 ) : (),
             };
         }
@@ -1205,6 +1366,7 @@ sub _items_to_menu {
                 play      => $ytm_url,
                 type      => 'audio',
                 on_select => 'play',
+                itemActions => _song_actions($ytm_url),
                 $playall ? ( playall => 1 ) : (),
             };
         }
