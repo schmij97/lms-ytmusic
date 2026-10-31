@@ -2139,6 +2139,8 @@ import threading as _threading
 _ydl_instance = None
 _ydl_lock = _threading.Lock()
 _ydl_available = None  # None=unknown, True=available, False=not available
+# Each extraction runs a Node process (~200 MB); two at once can exhaust a 512 MB container
+_extract_lock = _threading.Lock()
 
 def _get_ydl():
     """Get or create the persistent YoutubeDL instance."""
@@ -2198,7 +2200,8 @@ def _get_audio_url(video_id):
         if ydl is None:
             return None
         url = f"https://music.youtube.com/watch?v={video_id}"
-        info = ydl.extract_info(url, download=False)
+        with _extract_lock:
+            info = ydl.extract_info(url, download=False)
         if not info:
             return None
         # Get the best audio URL
