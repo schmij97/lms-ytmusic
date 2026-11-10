@@ -1393,10 +1393,16 @@ def browse_playlist(browse_id):
         items = _with_replaced_album_tracks(data, items)
         _fill_album_track_metadata(data, items)
 
-    # Private playlists (most of a user's own) come back empty to the
-    # anonymous request above. When signed in, fetch them through ytmusicapi.
-    if not items and browse_id.startswith("VL"):
-        items = _signed_in_playlist_items(browse_id[2:])
+    # The anonymous request above never follows continuation tokens, so it
+    # silently truncates at one page (commonly ~100 tracks) for any playlist
+    # long enough to need one — and for a user's own (often private)
+    # playlists, that page can also be empty. ytmusicapi's signed-in fetch
+    # paginates fully, so prefer it whenever available rather than only
+    # falling back to it when the anonymous page was empty.
+    if browse_id.startswith("VL"):
+        signed_in_items = _signed_in_playlist_items(browse_id[2:])
+        if signed_in_items:
+            items = signed_in_items
 
     result = {"browseId": browse_id, "items": items}
     _cache_set(cache_key, result)
