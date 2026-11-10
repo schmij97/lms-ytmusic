@@ -52,6 +52,7 @@ accordance with YouTube's Terms of Service.
 - Python 3.9+
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp)
 - ffmpeg
+- [Node.js](https://nodejs.org/) 22 or newer
 - `libio-socket-ssl-perl` (Perl SSL support)
 
 On Raspberry Pi OS / Debian:
@@ -90,6 +91,10 @@ Getting Python detected correctly by LMS on Windows requires installing Python s
 3. On the advanced options screen, select **"Install Python for all users"** — this installs to `C:\Program Files\Python3xx` instead of the per-user AppData folder, which LMS can reliably detect. Also ensure **"Add Python to environment variables"** is checked
 
 After installation, verify in a CMD terminal (Run as Administrator) that both `py.exe --version` and `python.exe --version` return the same Python version. Then restart LMS and use the **Download yt-dlp** button in **Settings → Advanced → YouTube Music**.
+
+**Node.js:** install Node.js 22 or newer from [nodejs.org](https://nodejs.org/) (the default install location is detected automatically).
+
+**ffmpeg:** if the settings page shows "FFMPEG NOT FOUND", download a full build (for example the "release full" zip from [gyan.dev](https://www.gyan.dev/ffmpeg/builds/)), extract it to a folder such as `C:\Program Files\ffmpeg`, and add its `bin` folder to the system `PATH` (Advanced System Properties → Environment Variables). Restart LMS afterwards. If something is still not found, enter the full path in **Path Overrides** (see Configuration below).
 
 > **Note:** If the Download button shows a "Failed to fetch" error, manually download `yt-dlp.exe` from the [yt-dlp releases page](https://github.com/yt-dlp/yt-dlp/releases) and place it in `C:\ProgramData\Lyrion\Cache\InstalledPlugins\Plugins\YouTubeMusic\Bin\`
 
