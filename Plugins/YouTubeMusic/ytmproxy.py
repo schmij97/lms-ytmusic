@@ -957,7 +957,7 @@ def browse_new_releases():
         grid     = section.get("gridRenderer", {})
         if carousel:
             header = carousel.get("header", {}).get("musicCarouselShelfBasicHeaderRenderer", {})
-            title  = _text(header.get("title", {}))
+            title  = _text(header)
             items  = _parse_two_row_items(carousel)
         elif grid:
             items  = _parse_two_row_items({"contents": grid.get("items", [])})
@@ -1001,7 +1001,7 @@ def browse_mood_category(browse_id, params):
         grid     = section.get("gridRenderer", {})
         if carousel:
             header = carousel.get("header", {}).get("musicCarouselShelfBasicHeaderRenderer", {})
-            title  = _text(header.get("title", {}))
+            title  = _text(header)
             items  = _parse_two_row_items(carousel)
         elif grid:
             items  = _parse_two_row_items({"contents": grid.get("items", [])})
@@ -1026,7 +1026,7 @@ def browse_podcasts():
         if not carousel:
             continue
         header = carousel.get("header", {}).get("musicCarouselShelfBasicHeaderRenderer", {})
-        title  = _text(header.get("title", {}))
+        title  = _text(header)
         items  = _parse_two_row_items(carousel)
         if items:
             result.append({"title": title or "Podcasts", "items": items})
