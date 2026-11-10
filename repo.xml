@@ -4,14 +4,14 @@
     <title lang="EN">YouTube Music for LMS</title>
   </details>
   <plugins>
-    <plugin name="YouTubeMusic" version="1.5.1" minTarget="9.0" maxTarget="*">
+    <plugin name="YouTubeMusic" version="1.5.2" minTarget="9.0" maxTarget="*">
       <title lang="EN">YouTube Music</title>
       <desc lang="EN">Browse, search, and stream YouTube Music to your Squeezebox players.</desc>
-      <changes lang="EN">Add "Go to artist" and "Go to album" to the track menu.</changes>
+      <changes lang="EN">Full playlists (100+ tracks), Go to artist/album, section header fixes, alphabetical library sort.</changes>
       <creator>schmij97</creator>
       <category>musicservices</category>
-      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.5.1/YouTubeMusic-1.5.1.zip</url>
-      <sha>ef9fb71ed2ae1f8687c7641981012820187a1bdd</sha>
+      <url>https://github.com/schmij97/lms-ytmusic/releases/download/v1.5.2/YouTubeMusic-1.5.2.zip</url>
+      <sha>bef7a3bbd81c88283ba1b7523e13a8161e52f039</sha>
     </plugin>
   </plugins>
 </extensions>

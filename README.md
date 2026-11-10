@@ -20,6 +20,14 @@ accordance with YouTube's Terms of Service.
 > working if Google changes that API without notice. See
 > [If the API changes](#if-the-api-changes) below for how to fix it.
 
+## What's New in 1.5.2
+
+- **Full playlist support** — Saved playlists with more than 100 tracks now load completely (previously capped at ~100)
+- **Go to artist / Go to album** — Track context menu now has shortcuts to browse an artist's or album's full catalogue
+- **Better section headers** — Fixed display of section names in Home/Browse views that were showing blank or incorrect titles
+- **Windows: Node.js 22+ required** — Explicitly documented; older Node versions caused proxy startup failures
+- **Library sort order** — Artist and album library lists are now sorted alphabetically, ignoring "The" and accents
+
 ## What's New in 1.5.0
 
 - **Recent search history** — Search remembers your last 50 searches; open Search to see them, or remove individual entries from within
