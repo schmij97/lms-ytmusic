@@ -745,23 +745,36 @@ def get_personal_home(limit=20):
         logging.warning("get_home failed: %s", e)
         return {"error": str(e), "sections": []}
 
+def _sort_key(*parts):
+    import unicodedata
+    out = []
+    for p in parts:
+        p = unicodedata.normalize("NFKD", (p or "").lower())
+        p = "".join(c for c in p if not unicodedata.combining(c))
+        out.append(re.sub(r"^(the)\s+", "", p).strip())
+    return out
+
 def get_library_albums(limit=500):
     yt = _get_ytm_auth()
     if not yt:
         return {"error": "not_authenticated", "items": []}
     try:
-        return {"items": _ytm_items(yt.get_library_albums(limit=limit))}
+        items = _ytm_items(yt.get_library_albums(limit=limit))
+        items.sort(key=lambda i: _sort_key(i.get("artist"), i.get("title")))
+        return {"items": items}
     except Exception as e:
         logging.warning("get_library_albums failed: %s", e)
         return {"error": str(e), "items": []}
 
-def get_library_artists(limit=500):
+def get_library_artists(limit=None):
     """Artists you subscribe to - the closest thing to 'liked artists'."""
     yt = _get_ytm_auth()
     if not yt:
         return {"error": "not_authenticated", "items": []}
     try:
-        return {"items": _ytm_items(yt.get_library_subscriptions(limit=limit))}
+        items = _ytm_items(yt.get_library_subscriptions(limit=limit))
+        items.sort(key=lambda i: _sort_key(i.get("title")))
+        return {"items": items}
     except Exception as e:
         logging.warning("get_library_subscriptions failed: %s", e)
         return {"error": str(e), "items": []}
