@@ -140,6 +140,8 @@ https://raw.githubusercontent.com/schmij97/lms-ytmusic/main/repo.xml
 
 ## Manual installation (fallback)
 
+> **Note:** The repository installation method above is strongly recommended. Installing manually (by copying files) means LMS won't manage the plugin — future updates will not appear in the GUI and you'll need to repeat the manual process each time.
+
 If you can't use the repository method, download the latest release ZIP
 from the [Releases page](https://github.com/schmij97/lms-ytmusic/releases)
 and extract it directly into your LMS plugins directory:
@@ -147,7 +149,7 @@ and extract it directly into your LMS plugins directory:
 ```bash
 unzip YouTubeMusic-X.Y.Z.zip
 sudo cp -r Plugins/YouTubeMusic /var/lib/squeezeboxserver/cache/InstalledPlugins/Plugins/
-sudo chown -R squeezeboxserver /var/lib/squeezeboxserver/cache/InstalledPlugins/Plugins/YouTubeMusic
+sudo chown -R squeezeboxserver:nogroup /var/lib/squeezeboxserver/cache/InstalledPlugins/Plugins/YouTubeMusic
 sudo systemctl restart logitechmediaserver
 ```
 
@@ -160,6 +162,8 @@ sudo nano /var/lib/squeezeboxserver/prefs/plugin/state.prefs
 
 Add a line `YouTubeMusic: enabled` right after the `---` at the top, save,
 and restart LMS again.
+
+**Switching from manual to repo install:** If you previously installed manually and updates aren't appearing in the GUI, reinstall through the repo to fix it: uncheck the plugin in Manage Plugins, apply, restart, then reinstall from the repo listing.
 
 ## Configuration
 
