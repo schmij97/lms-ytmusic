@@ -8,6 +8,8 @@ use base qw(Slim::Plugin::OPMLBased);
 use POSIX          qw(SIGTERM);
 use File::Spec     ();
 use Scalar::Util   qw(blessed);
+use Encode         ();
+use URI::Escape    ();
 
 use Slim::Utils::Log;
 use Slim::Menu::GlobalSearch;
@@ -445,6 +447,23 @@ sub _cliPlaylistCmd {
                 $request->setStatusDone();
                 return;
             }
+            # "Play all" points at the list itself (e.g. an artist's Top
+            # songs): open it and play its tracks.
+            if ($is_playall && ref $item->{url} eq 'CODE' && !defined $item->{play}) {
+                return $item->{url}->($client, sub {
+                    my $feed  = shift;
+                    my $list  = ref $feed eq 'HASH' ? $feed->{items} : $feed;
+                    my @urls  = grep { !ref && m{^ytm://} } map { $_->{play} // '' } @{ $list || [] };
+                    if (@urls) {
+                        $log->info("_cliPlaylistCmd: playing all " . scalar(@urls) . " tracks");
+                        $client->execute(['playlist', 'loadtracks', 'listref', \@urls]);
+                        $client->execute(['play']);
+                    } else {
+                        $log->warn("_cliPlaylistCmd: list has no tracks to play");
+                    }
+                    $request->setStatusDone();
+                }, {}, @{ $item->{passthrough} || [{}] });
+            }
             _play_menu_item($client, $method, $item, $siblings, sub { $request->setStatusDone() });
         });
     }, {});
@@ -462,7 +481,13 @@ sub _walk_menu {
         $log->warn("_cliPlaylistCmd: menu level has no items");
         return $done->();
     }
-    my $idx  = shift @$path;
+    # A step into a search box carries the typed text in the path itself:
+    # "0_evita" is item 0, searched for "evita".
+    my ($idx, $typed) = (shift(@$path) // '') =~ /^(\d+)(?:_(.*))?$/s;
+    if (defined $typed) {
+        $typed = Encode::decode_utf8(URI::Escape::uri_unescape($typed)) if $typed =~ /%[0-9A-Fa-f]{2}/;
+        $search = $typed;
+    }
     my $item = defined $idx ? $items->[$idx] : undef;
     unless ($item) {
         $log->warn("_cliPlaylistCmd: no item at index " . ($idx // '?'));
