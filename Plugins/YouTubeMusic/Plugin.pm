@@ -1232,8 +1232,15 @@ sub _artist_menu {
 
         my @items = map {
             my $section = $_;
+            my @sec_items = @{ $section->{items} // [] };
+            # A section that is a plain list of songs (Top songs, Videos...)
+            # is a playlist: type 'playlist' gives it the Play / Add menu on
+            # hold. Albums and the like list albums, so they stay folders.
+            my $is_songs = !($section->{more} && $section->{more}{browseId})
+                && @sec_items && !grep { ($_->{type} // '') ne 'song' || !$_->{videoId} } @sec_items;
             {
                 name => $section->{title} || 'Tracks',
+                ( $is_songs ? ( type => 'playlist' ) : () ),
                 url  => sub {
                     my ($c, $cb) = @_;
                     my $show = sub {
