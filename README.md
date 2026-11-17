@@ -110,9 +110,10 @@ After installation, verify in a CMD terminal (Run as Administrator) that both `p
 
 The `apt` version of yt-dlp is severely outdated (2022). Use pipx instead:
 
+```bash
 sudo apt install pipx
 pipx install yt-dlp
-
+```
 
 To update later: `pipx upgrade yt-dlp`
 
